@@ -88,7 +88,7 @@ export default function PortalNearbyJobCard({
     return (
         <article className={cardClassName} dir="rtl">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center justify-end gap-4 text-right">
+                <div className="flex items-center lg:justify-end, gap-4 text-right">
                     <span className="inline-flex size-[56px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#d9d9d9] text-size18 font-bold text-[#818181]">
                         {logoSrc ? (
                             <img
@@ -114,7 +114,7 @@ export default function PortalNearbyJobCard({
                     </div>
                 </div>
 
-                <div className="flex justify-start sm:justify-end">{actionButton}</div>
+                <div className="flex sm:justify-end">{actionButton}</div>
             </div>
         </article>
     )
