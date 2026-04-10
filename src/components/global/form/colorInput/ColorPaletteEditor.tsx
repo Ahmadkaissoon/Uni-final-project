@@ -49,7 +49,7 @@ export const ColorPaletteEditor = () => {
       {/* Color editor panel */}
       {openPalette && (
         <div
-          className="container fixed z-[10000] bottom-[100px] left-[30px] h-[70svh] w-[30vw] min-w-[300px] overflow-auto bg-tertiary-bg shadow-lg border border-primary-border rounded-2xl p-8"
+          className="fixed z-[10000] bottom-[100px] left-[30px] h-[70svh] w-[30vw] min-w-[300px] overflow-auto rounded-2xl border border-primary-border bg-tertiary-bg p-8 shadow-lg"
           dir="rtl"
         >
           <div className="flex flex-col gap-6">
