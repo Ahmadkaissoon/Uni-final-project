@@ -99,7 +99,7 @@ export default function PortalJobCategoriesSection({
                         </div>
                     </div>
 
-                    <div className="grid gap-5 px-[89px] sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
+                    <div className="grid gap-5 xl:px-[89px] sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
                         {paginatedCategories.map((category) => (
                             <PortalCategoryCard
                                 key={category.id}
