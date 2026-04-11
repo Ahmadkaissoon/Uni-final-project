@@ -124,7 +124,7 @@ export default function PortalAllJobCategoriesSection({
                             <h1 className="m-0 text-2xl font-bold leading-[1.3] text-black sm:text-[32px] py-2.5">
                                 {title}
                             </h1>
-                            <p className="mt-4 mb-0 xl:max-w-4/5 text-size24 font-medium leading-[1.9] text-black">
+                            <p className="mt-4 mb-0 min-[500px]:max-w-4/5 sm:text-size24 text-lg font-medium leading-[1.9] text-black">
                                 {description}
                             </p>
                         </div>
