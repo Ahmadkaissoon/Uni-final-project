@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 
+import PortalAllJobCategoriesPage from "../pages/portal/PortalAllJobCategoriesPage";
 import PortalHomePage from "../pages/portal/PortalHomePage";
 import PortalPagePlaceholder from "../pages/portal/PortalPagePlaceholder";
 import type { PortalPageDefinition } from "./portalPages";
@@ -10,6 +11,7 @@ export type PortalPageComponent = ComponentType<{
 
 const portalPageRegistry: Partial<Record<string, PortalPageComponent>> = {
   home: PortalHomePage,
+  "jobs-categories": PortalAllJobCategoriesPage,
   "company-home": PortalHomePage,
 };
 

@@ -48,7 +48,13 @@ export default function PortalHomePage({ page }: PortalHomePageProps) {
                 backgroundImageSrc={heroImage}
             />
 
-            <PortalJobCategoriesSection />
+            <PortalJobCategoriesSection
+                onShowMore={
+                    page.role === "user"
+                        ? () => navigate("/jobs/categories")
+                        : undefined
+                }
+            />
 
             {page.role === "user" ? <PortalCompaniesCarouselSection /> : null}
 
