@@ -10,6 +10,7 @@ import {
     Lightbulb,
     NotebookText,
     Palette,
+    Plus,
     Scissors,
 } from "lucide-react"
 import { useState } from "react"
@@ -158,8 +159,8 @@ export default function PortalAllJobCategoriesSection({
                                 className="inline-flex items-center rounded-[8px] border border-warning-color bg-warning-color !px-4 !py-2 !text-size18 !font-bold !text-white hover:!brightness-105"
                                 dir="rtl"
                             >
-                                <span className="ml-3 inline-flex items-center justify-center rounded-full border-2 border-white px-1.5 py-0.5 text-size18 leading-none">
-                                    +
+                                <span className="ml-3 inline-flex items-center justify-center rounded-full border-2 border-white p-1">
+                                    <Plus className="size-5" />
                                 </span>
                                 <span className="inline-flex items-center">
                                     عرض المزيد
