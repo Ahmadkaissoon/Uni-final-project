@@ -13,11 +13,16 @@ import {
     Plus,
     Scissors,
 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { Button } from "../global/ui/button"
 import type { PortalCategoryItem } from "./PortalJobCategoriesSection"
 import PortalCategoryCard from "./PortalCategoryCard"
+import PortalCategoryCardSkeleton from "./PortalCategoryCardSkeleton"
+
+type LoadingMode = "initial" | "more" | null
+
+const LOAD_DELAY_MS = 1500
 
 const allCategories: PortalCategoryItem[] = [
     {
@@ -108,6 +113,8 @@ export default function PortalAllJobCategoriesSection({
     itemsPerPage = 6,
 }: PortalAllJobCategoriesSectionProps) {
     const [visiblePages, setVisiblePages] = useState(1)
+    const [loadingMode, setLoadingMode] = useState<LoadingMode>("initial")
+    const timeoutRef = useRef<number | null>(null)
 
     const visibleCount = Math.min(
         categories.length,
@@ -115,6 +122,51 @@ export default function PortalAllJobCategoriesSection({
     )
     const visibleCategories = categories.slice(0, visibleCount)
     const canShowMore = visibleCount < categories.length
+    const loadingSkeletonCount =
+        loadingMode === "more"
+            ? Math.min(itemsPerPage, categories.length - visibleCount)
+            : Math.min(itemsPerPage, Math.max(categories.length, itemsPerPage))
+
+    useEffect(() => {
+        timeoutRef.current = window.setTimeout(() => {
+            setLoadingMode(null)
+            timeoutRef.current = null
+        }, LOAD_DELAY_MS)
+
+        return () => {
+            if (timeoutRef.current !== null) {
+                window.clearTimeout(timeoutRef.current)
+            }
+        }
+    }, [])
+
+    function clearLoadingTimeout() {
+        if (timeoutRef.current !== null) {
+            window.clearTimeout(timeoutRef.current)
+            timeoutRef.current = null
+        }
+    }
+
+    function scheduleLoading(onComplete?: () => void) {
+        clearLoadingTimeout()
+        setLoadingMode("more")
+
+        timeoutRef.current = window.setTimeout(() => {
+            onComplete?.()
+            setLoadingMode(null)
+            timeoutRef.current = null
+        }, LOAD_DELAY_MS)
+    }
+
+    function handleShowMore() {
+        if (!canShowMore || loadingMode !== null) {
+            return
+        }
+
+        scheduleLoading(() => {
+            setVisiblePages((currentPage) => currentPage + 1)
+        })
+    }
 
     return (
         <section className="py-12 sm:py-16 lg:py-20" dir="rtl">
@@ -132,38 +184,56 @@ export default function PortalAllJobCategoriesSection({
                     </div>
 
                     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-10 xl:px-[89px]">
-                        {visibleCategories.map((category) => (
-                            <PortalCategoryCard
-                                key={category.id}
-                                title={category.title}
-                                icon={category.icon}
-                                to={category.to}
-                                href={category.href}
-                                target={category.target}
-                                rel={category.rel}
-                            />
-                        ))}
+                        {loadingMode === "initial"
+                            ? Array.from({ length: loadingSkeletonCount }).map(
+                                  (_, index) => (
+                                      <PortalCategoryCardSkeleton
+                                          key={`category-initial-skeleton-${index + 1}`}
+                                      />
+                                  ),
+                              )
+                            : visibleCategories.map((category) => (
+                                  <PortalCategoryCard
+                                      key={category.id}
+                                      title={category.title}
+                                      icon={category.icon}
+                                      to={category.to}
+                                      href={category.href}
+                                      target={category.target}
+                                      rel={category.rel}
+                                  />
+                              ))}
+
+                        {loadingMode === "more"
+                            ? Array.from({ length: loadingSkeletonCount }).map(
+                                  (_, index) => (
+                                      <PortalCategoryCardSkeleton
+                                          key={`category-more-skeleton-${index + 1}`}
+                                      />
+                                  ),
+                              )
+                            : null}
                     </div>
 
-                    {canShowMore ? (
+                    {loadingMode === "more" ||
+                    (loadingMode === null && canShowMore) ? (
                         <div className="mt-8 flex justify-center sm:mt-10">
                             <Button
                                 type="button"
                                 variant="panel"
                                 size="normal"
-                                onClick={() =>
-                                    setVisiblePages(
-                                        (currentPage) => currentPage + 1,
-                                    )
-                                }
-                                className="inline-flex items-center rounded-[8px] border border-warning-color bg-warning-color !px-4 !py-2 !text-size18 !font-bold !text-white hover:!brightness-105"
+                                onClick={handleShowMore}
+                                disabled={loadingMode !== null}
+                                className="inline-flex items-center rounded-[8px] border border-warning-color bg-warning-color !px-4 !py-2 !text-size18 !font-bold !text-white hover:!brightness-105 disabled:opacity-80"
                                 dir="rtl"
                             >
                                 <span className="ml-3 inline-flex items-center justify-center rounded-full border-2 border-white p-1">
                                     <Plus className="size-5" />
                                 </span>
                                 <span className="inline-flex items-center">
-                                    عرض المزيد
+                                    {loadingMode === "more"
+                                        ? "جاري التحميل"
+                                        : "عرض المزيد"}
                                 </span>
                             </Button>
                         </div>
