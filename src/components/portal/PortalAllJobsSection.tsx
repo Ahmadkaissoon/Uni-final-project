@@ -113,7 +113,7 @@ export default function PortalAllJobsSection({
     return (
         <section className="pb-12 sm:pb-18 sm:pt-12" dir="rtl">
             <div className="portal-design-shell">
-                <div className="px-22">
+                <div className="portal-all-jobs-content px-22">
                     <div className="mb-12 flex justify-start">
                         <div className="border-r-[3px] border-warning-color pr-2 text-right">
                             <h1 className="m-0 py-2.5 text-2xl font-bold leading-[1.3] text-black sm:text-[32px]">
@@ -125,7 +125,7 @@ export default function PortalAllJobsSection({
                         </div>
                     </div>
 
-                    <div className="grid gap-y-6 gap-x-36 md:grid-cols-2">
+                    <div className="portal-all-jobs-grid grid gap-y-6 gap-x-36 md:grid-cols-2">
                         {visibleJobs.map((job) => (
                             <PortalJobListingCard
                                 key={job.id}

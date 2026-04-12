@@ -46,7 +46,7 @@ export default function PortalJobListingCard({
     className,
 }: PortalJobListingCardProps) {
     const cardClassName = cn(
-        "portal-category-card-shadow rounded-[20px] bg-white px-6 py-6 sm:pe-19 sm:ps-12.5 sm:py-12",
+        "portal-job-listing-card portal-category-card-shadow overflow-hidden rounded-[20px] bg-white px-6 py-6 sm:pe-19 sm:ps-12.5 sm:py-12",
         className,
     )
 
@@ -90,9 +90,9 @@ export default function PortalJobListingCard({
 
     return (
         <article className={cardClassName} dir="rtl">
-            <div className="flex flex-col gap-16 sm:flex-row sm:items-end sm:justify-between">
-                <div className="">
-                    <div className="flex items-start justify-end gap-4 text-right mb-6">
+            <div className="portal-job-listing-card__layout relative flex flex-col lg:gap-16 sm:flex-row sm:items-end sm:justify-between">
+                <div className="portal-job-listing-card__content min-w-0">
+                    <div className="mb-6 flex min-w-0 items-start sm:justify-end gap-4 text-right">
                         <span className="inline-flex size-13 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(180deg,#7db8f6_0%,#3366a6_100%)] text-size16 font-bold text-white">
                             {logoSrc ? (
                                 <img
@@ -106,11 +106,11 @@ export default function PortalJobListingCard({
                                 getCompanyInitials(companyName)
                             )}
                         </span>
-                        <h3 className="m-0 text-size24 font-bold leading-[1.3] text-black">
+                        <h3 className="m-0 min-w-0 break-words text-size24 font-bold leading-[1.3] text-black">
                             {companyName}
                         </h3>
                     </div>
-                    <p className="mb-6 text-size18 font-bold leading-[1.35] text-[#d44b2e]">
+                    <p className="mb-6 break-words text-size18 font-bold leading-[1.35] text-[#d44b2e]">
                         {jobTitle}
                     </p>
 
@@ -120,7 +120,9 @@ export default function PortalJobListingCard({
                     </div>
                 </div>
 
-                <div className="flex sm:justify-end">{actionButton}</div>
+                <div className="portal-job-listing-card__action flex w-full sm:w-auto justify-end md:absolute lg:relative bottom-0 end-0">
+                    {actionButton}
+                </div>
             </div>
         </article>
     )
