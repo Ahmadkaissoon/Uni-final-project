@@ -3,93 +3,10 @@ import { useState } from "react"
 
 import { Button } from "../global/ui/button"
 import PortalJobListingCard from "./PortalJobListingCard"
-
-export interface PortalJobListingItem {
-    id: string
-    companyName: string
-    jobTitle: string
-    location: string
-    logoSrc?: string
-    logoAlt?: string
-    logoLabel?: string
-    to?: string
-    href?: string
-    target?: string
-    rel?: string
-}
-
-const defaultJobs: PortalJobListingItem[] = [
-    {
-        id: "al-mateen-graphic-designer",
-        companyName: "شركة المتين",
-        jobTitle: "مصمم غرافيك",
-        location: "دمشق",
-        to: "/jobs/all?job=al-mateen-graphic-designer",
-    },
-    {
-        id: "al-najah-ui-designer",
-        companyName: "شركة النجاح",
-        jobTitle: "مصمم واجهات",
-        location: "حلب",
-        to: "/jobs/all?job=al-najah-ui-designer",
-    },
-    {
-        id: "al-bayan-frontend",
-        companyName: "شركة البيان",
-        jobTitle: "مطور واجهات",
-        location: "حمص",
-        to: "/jobs/all?job=al-bayan-frontend",
-    },
-    {
-        id: "al-riyada-marketing",
-        companyName: "شركة الريادة",
-        jobTitle: "تسويق رقمي",
-        location: "اللاذقية",
-        to: "/jobs/all?job=al-riyada-marketing",
-    },
-    {
-        id: "al-afaq-content",
-        companyName: "شركة الآفاق",
-        jobTitle: "كاتب محتوى",
-        location: "دمشق",
-        to: "/jobs/all?job=al-afaq-content",
-    },
-    {
-        id: "al-qimma-support",
-        companyName: "شركة القمة",
-        jobTitle: "خدمة عملاء",
-        location: "طرطوس",
-        to: "/jobs/all?job=al-qimma-support",
-    },
-    {
-        id: "al-noor-accountant",
-        companyName: "شركة النور",
-        jobTitle: "محاسب",
-        location: "حماة",
-        to: "/jobs/all?job=al-noor-accountant",
-    },
-    {
-        id: "al-ibdaa-photographer",
-        companyName: "شركة الإبداع",
-        jobTitle: "مصور",
-        location: "دمشق",
-        to: "/jobs/all?job=al-ibdaa-photographer",
-    },
-    {
-        id: "al-bunyan-analyst",
-        companyName: "شركة البنيان",
-        jobTitle: "محلل بيانات",
-        location: "حمص",
-        to: "/jobs/all?job=al-bunyan-analyst",
-    },
-    {
-        id: "al-mateen-graphic-designer-2",
-        companyName: "شركة المتين",
-        jobTitle: "مصمم غرافيك",
-        location: "دمشق",
-        to: "/jobs/all?job=al-mateen-graphic-designer",
-    },
-]
+import {
+    portalJobRecords,
+    type PortalJobListingItem,
+} from "./portalJobsData"
 
 interface PortalAllJobsSectionProps {
     title?: string
@@ -101,7 +18,7 @@ interface PortalAllJobsSectionProps {
 export default function PortalAllJobsSection({
     title = "كافة الوظائف",
     description = "اكتشف أفضل الفرص المناسبة لك وابدأ بعرض خدماتك على الشركات",
-    jobs = defaultJobs,
+    jobs = portalJobRecords,
     itemsPerPage = 6,
 }: PortalAllJobsSectionProps) {
     const [visiblePages, setVisiblePages] = useState(1)
