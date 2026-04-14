@@ -1,5 +1,6 @@
-// ReusableTable.jsx
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+
 import {
   Table,
   TableHeader,
@@ -7,26 +8,58 @@ import {
   TableRow,
   TableHead,
   TableCell,
-} from "@/components/ui/table";
-import Button from "./Button";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+} from "../ui/table";
+import { Button } from "../ui/button";
+import { cn } from "../../../utils/cn";
+
+function resolveActionClassName(color) {
+  const normalizedColor = `${color ?? ""}`.toLowerCase();
+
+  if (
+    normalizedColor.includes("red") ||
+    normalizedColor.includes("danger") ||
+    normalizedColor.includes("error")
+  ) {
+    return "border-[#b43531] bg-[#c63a35] !text-white hover:!brightness-105";
+  }
+
+  if (
+    normalizedColor.includes("green") ||
+    normalizedColor.includes("success") ||
+    normalizedColor.includes("accept")
+  ) {
+    return "border-[#4ea56e] bg-[#5ab37b] !text-white hover:!brightness-105";
+  }
+
+  if (
+    normalizedColor.includes("orange") ||
+    normalizedColor.includes("warning") ||
+    normalizedColor.includes("yellow")
+  ) {
+    return "border-warning-color bg-warning-color !text-white hover:!brightness-105";
+  }
+
+  return "border-[var(--main-color)] bg-[var(--main-color)] !text-white hover:!brightness-105";
+}
 
 const ReusableTable = ({
   data,
   columns,
   actions,
   alternateRowColors = true,
-  primaryColor = "#2a4d69",
-  secondaryColor = "#00acc1",
-  textColor = "#f5f5f5",
+  primaryColor = "var(--main-color)",
+  secondaryColor = "#f7fbff",
+  textColor = "var(--primary-foreground)",
+  bodyTextColor = "var(--black)",
   dir = "rtl",
   showRowNumbers = true,
-  isLoading = false, // Add loading prop
+  isLoading = false,
+  loadingText = "جاري تحميل البيانات...",
+  emptyText = "لا يوجد بيانات للعرض",
 }) => {
   const [sortColumn, setSortColumn] = useState(null);
   const [sortDirection, setSortDirection] = useState(null);
 
-  // Safe data handling
   const safeData = Array.isArray(data) ? data : [];
   const safeColumns = Array.isArray(columns) ? columns : [];
   const safeActions = Array.isArray(actions) ? actions : [];
@@ -47,108 +80,137 @@ const ReusableTable = ({
     }
   };
 
-  const sortedData = [...safeData].sort((a, b) => {
-    if (!sortColumn || !sortDirection) return 0;
-    if (sortColumn === "rowNumber") return 0;
+  const sortedData = useMemo(() => {
+    return [...safeData].sort((a, b) => {
+      if (!sortColumn || !sortDirection || sortColumn === "rowNumber") {
+        return 0;
+      }
 
-    const column = safeColumns.find((col) => col.id === sortColumn);
-    if (!column) return 0;
+      const column = safeColumns.find((col) => col.id === sortColumn);
+      if (!column) {
+        return 0;
+      }
 
-    if (column.sortFn) {
-      return column.sortFn(a, b, sortDirection);
-    }
+      if (column.sortFn) {
+        return column.sortFn(a, b, sortDirection);
+      }
 
-    if (!column.value) return 0;
+      if (!column.value) {
+        return 0;
+      }
 
-    const aValue = a[column.value];
-    const bValue = b[column.value];
+      const aValue = a?.[column.value];
+      const bValue = b?.[column.value];
 
-    if (aValue === bValue) return 0;
+      if (aValue == null && bValue == null) {
+        return 0;
+      }
 
-    if (typeof aValue === "string" && typeof bValue === "string") {
+      if (aValue == null) {
+        return sortDirection === "asc" ? 1 : -1;
+      }
+
+      if (bValue == null) {
+        return sortDirection === "asc" ? -1 : 1;
+      }
+
+      if (aValue === bValue) {
+        return 0;
+      }
+
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return sortDirection === "asc"
+          ? aValue.localeCompare(bValue, "ar")
+          : bValue.localeCompare(aValue, "ar");
+      }
+
       return sortDirection === "asc"
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue);
-    }
-
-    return sortDirection === "asc"
-      ? aValue > bValue
-        ? 1
-        : -1
-      : aValue < bValue
-      ? 1
-      : -1;
-  });
+        ? aValue > bValue
+          ? 1
+          : -1
+        : aValue < bValue
+          ? 1
+          : -1;
+    });
+  }, [safeColumns, safeData, sortColumn, sortDirection]);
 
   const renderSortIcon = (columnId) => {
+    const iconClassName = "inline-block h-4 w-4";
+
     if (sortColumn !== columnId) {
-      return <ArrowUpDown className="inline-block h-4 w-4" />;
+      return <ArrowUpDown className={iconClassName} />;
     }
+
     return sortDirection === "asc" ? (
-      <ArrowUp className="inline-block h-4 w-4" />
+      <ArrowUp className={iconClassName} />
     ) : (
-      <ArrowDown className="inline-block h-4 w-4" />
+      <ArrowDown className={iconClassName} />
     );
   };
 
-  // Loading state
   if (isLoading) {
     return (
-      <div className="w-full p-8 text-center text-gray-500">
-        <div>Loading data...</div>
+      <div className="flex min-h-[220px] w-full items-center justify-center rounded-[22px] border border-[#dbe5f3] bg-white p-8 text-center shadow-[0_16px_42px_rgba(14,35,59,0.08)]">
+        <div className="text-size18 font-medium text-[#6a7788]">
+          {loadingText}
+        </div>
       </div>
     );
   }
 
-  // Empty state
   if (safeData.length === 0) {
     return (
-      <div className="w-full h-full flex p-8 text-center text-gray-500">
-        <div className="flex w-full h-full justify-center items-center">
-          لا يوجد بيانات للعرض
+      <div className="flex min-h-[220px] w-full items-center justify-center rounded-[22px] border border-dashed border-[#cfdced] bg-[#f9fbff] p-8 text-center shadow-[0_16px_42px_rgba(14,35,59,0.04)]">
+        <div className="text-size18 font-medium text-[#6a7788]">
+          {emptyText}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-md">
+    <div className="w-full overflow-x-auto rounded-[22px] border border-[#dbe5f3] bg-white shadow-[0_18px_46px_rgba(14,35,59,0.09)]">
       <Table dir={dir} className="min-w-full text-center">
-        <TableHeader
-          style={{ backgroundColor: primaryColor, color: textColor }}
-        >
-          <TableRow>
+        <TableHeader style={{ backgroundColor: primaryColor, color: textColor }}>
+          <TableRow className="border-b-0 hover:!bg-transparent">
             {showRowNumbers && (
               <TableHead
-                className="font-bold h-[64px] text-xl text-center"
+                className="h-[64px] px-4 text-center text-size18 font-bold"
                 style={{ color: textColor }}
               >
                 #
               </TableHead>
             )}
+
             {safeColumns.map((column) => (
               <TableHead
                 key={column.id}
-                className={`font-bold h-[64px] text-xl text-center ${
-                  column.className || ""
-                }`}
+                className={cn(
+                  "h-[64px] px-4 text-center text-size18 font-bold",
+                  column.className || "",
+                )}
                 style={{ color: textColor }}
               >
-                {column.header}
-                {column.sortable && (
-                  <button
-                    onClick={() => handleSort(column.id)}
-                    className="ml-2 align-middle"
-                    aria-label={`Sort by ${column.header}`}
-                  >
-                    {renderSortIcon(column.id)}
-                  </button>
-                )}
+                <div className="inline-flex items-center justify-center gap-2">
+                  <span>{column.header}</span>
+
+                  {column.sortable ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSort(column.id)}
+                      className="inline-flex items-center justify-center rounded-full p-1 text-white/80 transition hover:bg-white/10 hover:text-white"
+                      aria-label={`Sort by ${column.header}`}
+                    >
+                      {renderSortIcon(column.id)}
+                    </button>
+                  ) : null}
+                </div>
               </TableHead>
             ))}
+
             {safeActions.length > 0 && (
               <TableHead
-                className="text-center font-bold text-xl"
+                className="h-[64px] px-4 text-center text-size18 font-bold"
                 style={{ color: textColor }}
               >
                 العمليات
@@ -160,21 +222,20 @@ const ReusableTable = ({
         <TableBody>
           {sortedData.map((row, index) => (
             <TableRow
-              key={index}
+              key={row?.id ?? index}
+              className="border-b border-[#e6edf7] transition-colors hover:!bg-[#edf4ff]"
               style={{
                 backgroundColor: alternateRowColors
                   ? index % 2 === 0
-                    ? secondaryColor
-                    : primaryColor
-                  : primaryColor,
-                color: textColor,
+                    ? "#ffffff"
+                    : secondaryColor
+                  : "#ffffff",
               }}
-              className="hover:brightness-90 transition-all cursor-pointer"
             >
               {showRowNumbers && (
                 <TableCell
-                  className="text-lg text-center"
-                  style={{ color: textColor }}
+                  className="px-4 py-4 text-center text-size16 font-semibold"
+                  style={{ color: bodyTextColor }}
                 >
                   {index + 1}
                 </TableCell>
@@ -183,27 +244,37 @@ const ReusableTable = ({
               {safeColumns.map((column) => (
                 <TableCell
                   key={column.id}
-                  className={`text-lg text-center ${column.className || ""}`}
-                  style={{ color: textColor }}
+                  className={cn(
+                    "px-4 py-4 text-center text-size16 font-medium",
+                    column.className || "",
+                  )}
+                  style={{ color: bodyTextColor }}
                 >
                   {column.cell
                     ? column.cell(row)
                     : column.value
-                    ? row[column.value]
-                    : null}
+                      ? row?.[column.value]
+                      : null}
                 </TableCell>
               ))}
+
               {safeActions.length > 0 && (
-                <TableCell className="text-center">
-                  <div className="flex justify-center gap-2">
+                <TableCell className="px-4 py-4 text-center">
+                  <div className="flex flex-wrap justify-center gap-2">
                     {safeActions.map((action, actionIndex) => (
                       <Button
-                        key={actionIndex}
-                        title={action.title}
-                        onClickFun={() => action.onClickFun?.(row)}
-                        color={action?.color}
-                        styleType="table"
-                      />
+                        key={`${action.title ?? "action"}-${actionIndex + 1}`}
+                        type="button"
+                        variant="panel"
+                        size="normal"
+                        onClick={() => action.onClickFun?.(row)}
+                        className={cn(
+                          "inline-flex min-h-[38px] items-center justify-center rounded-[8px] border !px-3.5 !py-2 !text-size14 !font-bold shadow-none",
+                          resolveActionClassName(action?.color),
+                        )}
+                      >
+                        {action.title}
+                      </Button>
                     ))}
                   </div>
                 </TableCell>
