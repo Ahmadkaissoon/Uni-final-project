@@ -47,6 +47,7 @@ const ReusableTable = ({
   columns,
   actions,
   alternateRowColors = true,
+  rowBackgrounds,
   primaryColor = "var(--main-color)",
   secondaryColor = "#f7fbff",
   textColor = "var(--primary-foreground)",
@@ -223,13 +224,21 @@ const ReusableTable = ({
           {sortedData.map((row, index) => (
             <TableRow
               key={row?.id ?? index}
-              className="border-b border-[#e6edf7] transition-colors hover:!bg-[#edf4ff]"
+              className={cn(
+                "border-b border-[#e6edf7] transition-colors",
+                Array.isArray(rowBackgrounds) && rowBackgrounds.length > 0
+                  ? "hover:brightness-[1.03]"
+                  : "hover:!bg-[#edf4ff]",
+              )}
               style={{
-                backgroundColor: alternateRowColors
-                  ? index % 2 === 0
-                    ? "#ffffff"
-                    : secondaryColor
-                  : "#ffffff",
+                backgroundColor:
+                  Array.isArray(rowBackgrounds) && rowBackgrounds.length > 0
+                    ? rowBackgrounds[index % rowBackgrounds.length]
+                    : alternateRowColors
+                      ? index % 2 === 0
+                        ? "#ffffff"
+                        : secondaryColor
+                      : "#ffffff",
               }}
             >
               {showRowNumbers && (

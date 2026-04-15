@@ -1,6 +1,7 @@
 import {
   type CSSProperties,
   type ReactNode,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -10,25 +11,19 @@ import { useNavigate } from "react-router-dom";
 import Stepper, {
   type StepType,
 } from "../../../components/global/stepper/Stepper";
+import {
+  companyProfileEditorConfig,
+  emptyCompanyProfileData,
+  type CompanyProfileData,
+} from "../../../utils/portalProfileSchemas";
 import { cn } from "../../../utils/cn";
+import {
+  notifyPortalProfileUpdate,
+  readStoredProfile,
+  writeStoredProfile,
+} from "../../../utils/portalProfileStorage";
 
 type CompanyWizardStepKey = "basic" | "manager" | "needs";
-
-interface CompanyProfileData {
-  companyName: string;
-  sector: string;
-  employeeCount: string;
-  country: string;
-  city: string;
-  address: string;
-  companyPhone: string;
-  website: string;
-  hiringManagerName: string;
-  companyEmail: string;
-  hiringJobTypes: string;
-  monthlyOpenings: string;
-  companyRecommendations: string;
-}
 
 const companyWizardSteps: Array<{
   key: CompanyWizardStepKey;
@@ -76,21 +71,12 @@ function CompanyProfileWizard() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [formData, setFormData] = useState<CompanyProfileData>({
-    companyName: "",
-    sector: "",
-    employeeCount: "",
-    country: "",
-    city: "",
-    address: "",
-    companyPhone: "",
-    website: "",
-    hiringManagerName: "",
-    companyEmail: "",
-    hiringJobTypes: "",
-    monthlyOpenings: "",
-    companyRecommendations: "",
-  });
+  const [formData, setFormData] = useState<CompanyProfileData>(() =>
+    readStoredProfile<CompanyProfileData>(
+      companyProfileEditorConfig.storageKey,
+      emptyCompanyProfileData,
+    ),
+  );
 
   const steps: StepType[] = useMemo(
     () =>
@@ -110,6 +96,14 @@ function CompanyProfileWizard() {
       [field]: value,
     }));
   };
+
+  useEffect(() => {
+    writeStoredProfile<CompanyProfileData>(
+      companyProfileEditorConfig.storageKey,
+      formData,
+    );
+    notifyPortalProfileUpdate("company");
+  }, [formData]);
 
   const handleNextStep = () => {
     setIsCompleted(false);

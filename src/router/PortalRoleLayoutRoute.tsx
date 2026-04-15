@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import {
@@ -8,8 +9,11 @@ import {
 import {
   getPortalPageByPath,
   getPortalPathByPageId,
-  portalProfilesByRole,
 } from "./portalPages";
+import {
+  getStoredPortalProfileSummary,
+  subscribeToPortalProfileUpdates,
+} from "../utils/portalProfileStorage";
 
 interface PortalRoleLayoutRouteProps {
   role: PortalRole;
@@ -20,16 +24,37 @@ export default function PortalRoleLayoutRoute({
 }: PortalRoleLayoutRouteProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [profile, setProfile] = useState(() =>
+    getStoredPortalProfileSummary(role),
+  );
 
   const activePageId =
     getPortalPageByPath(role, location.pathname)?.id ??
     defaultActivePageByRole[role];
 
+  useEffect(() => {
+    return subscribeToPortalProfileUpdates((updatedRole) => {
+      if (updatedRole === role) {
+        setProfile(getStoredPortalProfileSummary(role));
+      }
+    });
+  }, [role]);
+
   return (
     <PortalLayout
       role={role}
       activePageId={activePageId}
-      profile={portalProfilesByRole[role]}
+      profile={profile}
+      onProfileClick={() => {
+        const nextPath = getPortalPathByPageId(
+          role,
+          role === "company" ? "company-profile" : "profile",
+        );
+
+        if (nextPath && nextPath !== location.pathname) {
+          navigate(nextPath);
+        }
+      }}
       onPageChange={(pageId) => {
         const nextPath = getPortalPathByPageId(role, pageId);
 
@@ -42,4 +67,3 @@ export default function PortalRoleLayoutRoute({
     </PortalLayout>
   );
 }
-

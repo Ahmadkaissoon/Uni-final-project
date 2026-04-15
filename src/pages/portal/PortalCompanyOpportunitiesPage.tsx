@@ -50,6 +50,8 @@ interface ActivePanelState {
     itemId: string
 }
 
+const opportunityTableRowBackgrounds = ["#63adc3", "#425a7a"]
+
 const initialManagedJobs: ManagedJobItem[] = [
     createManagedJobItem({
         id: "company-job-1",
@@ -231,15 +233,6 @@ export default function PortalCompanyOpportunitiesPage({
     const panelRef = useRef<HTMLDivElement | null>(null)
 
     useEffect(() => {
-        setActiveTab(resolveTabFromPageId(page.id))
-        setActivePanel(null)
-    }, [page.id])
-
-    useEffect(() => {
-        setActivePanel(null)
-    }, [activeTab])
-
-    useEffect(() => {
         if (activePanel) {
             panelRef.current?.scrollIntoView({
                 behavior: "smooth",
@@ -264,187 +257,186 @@ export default function PortalCompanyOpportunitiesPage({
         [activePanel, trainings],
     )
 
-    const jobColumns = useMemo(
-        () => [
-            {
-                id: "date",
-                header: "التاريخ",
-                sortable: true,
-                cell: (row: ManagedJobItem) => row.createdAt,
-                sortFn: (a: ManagedJobItem, b: ManagedJobItem, direction: string) =>
-                    compareStrings(a.createdAt, b.createdAt, direction),
-            },
-            {
-                id: "title",
-                header: "العمل/التدريب",
-                sortable: true,
-                cell: (row: ManagedJobItem) => (
-                    <span className="font-semibold text-[#1f355d]">
-                        {row.record.jobTitle}
-                    </span>
-                ),
-                sortFn: (a: ManagedJobItem, b: ManagedJobItem, direction: string) =>
-                    compareStrings(a.record.jobTitle, b.record.jobTitle, direction),
-            },
-            {
-                id: "city",
-                header: "المدينة",
-                sortable: true,
-                cell: (row: ManagedJobItem) => row.record.location,
-                sortFn: (a: ManagedJobItem, b: ManagedJobItem, direction: string) =>
-                    compareStrings(a.record.location, b.record.location, direction),
-            },
-            {
-                id: "status",
-                header: "الحالة",
-                cell: (row: ManagedJobItem) =>
-                    renderStatusBadge(row.statusLabel, row.statusTone),
-            },
-            {
-                id: "actions",
-                header: "الإجراءات",
-                cell: (row: ManagedJobItem) => (
-                    <div className="flex items-center justify-center gap-2.5">
-                        <IconActionButton
-                            label="عرض التفاصيل"
-                            colorClassName="text-[#d48a15] hover:bg-[#fff7ea]"
-                            onClick={() =>
-                                setActivePanel({
-                                    tab: "jobs",
-                                    mode: "details",
-                                    itemId: row.id,
-                                })
-                            }
-                        >
-                            <Eye className="size-[18px]" />
-                        </IconActionButton>
-                        <IconActionButton
-                            label="تعديل الوظيفة"
-                            colorClassName="text-[#4ea56e] hover:bg-[#eefaf2]"
-                            onClick={() =>
-                                setActivePanel({
-                                    tab: "jobs",
-                                    mode: "edit",
-                                    itemId: row.id,
-                                })
-                            }
-                        >
-                            <PencilLine className="size-[18px]" />
-                        </IconActionButton>
-                        <IconActionButton
-                            label="حذف الوظيفة"
-                            colorClassName="text-[#c63a35] hover:bg-[#fff1f0]"
-                            onClick={() => handleDeleteJob(row.id)}
-                        >
-                            <Trash2 className="size-[18px]" />
-                        </IconActionButton>
-                    </div>
-                ),
-            },
-        ],
-        [],
-    )
+    const jobColumns = [
+        {
+            id: "date",
+            header: "التاريخ",
+            sortable: true,
+            cell: (row: ManagedJobItem) => row.createdAt,
+            sortFn: (a: ManagedJobItem, b: ManagedJobItem, direction: string) =>
+                compareStrings(a.createdAt, b.createdAt, direction),
+        },
+        {
+            id: "title",
+            header: "العمل/التدريب",
+            sortable: true,
+            cell: (row: ManagedJobItem) => (
+                <span className="font-semibold text-white">
+                    {row.record.jobTitle}
+                </span>
+            ),
+            sortFn: (a: ManagedJobItem, b: ManagedJobItem, direction: string) =>
+                compareStrings(a.record.jobTitle, b.record.jobTitle, direction),
+        },
+        {
+            id: "city",
+            header: "المدينة",
+            sortable: true,
+            cell: (row: ManagedJobItem) => row.record.location,
+            sortFn: (a: ManagedJobItem, b: ManagedJobItem, direction: string) =>
+                compareStrings(a.record.location, b.record.location, direction),
+        },
+        {
+            id: "status",
+            header: "الحالة",
+            cell: (row: ManagedJobItem) =>
+                renderStatusBadge(row.statusLabel, row.statusTone),
+        },
+        {
+            id: "actions",
+            header: "الإجراءات",
+            cell: (row: ManagedJobItem) => (
+                <div className="flex items-center justify-center gap-2.5">
+                    <IconActionButton
+                        label="عرض التفاصيل"
+                        colorClassName="text-[#ffad32] hover:bg-white/12"
+                        onClick={() =>
+                            setActivePanel({
+                                tab: "jobs",
+                                mode: "details",
+                                itemId: row.id,
+                            })
+                        }
+                    >
+                        <Eye className="size-[18px]" />
+                    </IconActionButton>
+                    <IconActionButton
+                        label="تعديل الوظيفة"
+                        colorClassName="text-[#56c176] hover:bg-white/12"
+                        onClick={() =>
+                            setActivePanel({
+                                tab: "jobs",
+                                mode: "edit",
+                                itemId: row.id,
+                            })
+                        }
+                    >
+                        <PencilLine className="size-[18px]" />
+                    </IconActionButton>
+                    <IconActionButton
+                        label="حذف الوظيفة"
+                        colorClassName="text-[#ff6a61] hover:bg-white/12"
+                        onClick={() => handleDeleteJob(row.id)}
+                    >
+                        <Trash2 className="size-[18px]" />
+                    </IconActionButton>
+                </div>
+            ),
+        },
+    ]
 
-    const trainingColumns = useMemo(
-        () => [
-            {
-                id: "date",
-                header: "التاريخ",
-                sortable: true,
-                cell: (row: ManagedTrainingItem) => row.createdAt,
-                sortFn: (
-                    a: ManagedTrainingItem,
-                    b: ManagedTrainingItem,
-                    direction: string,
-                ) => compareStrings(a.createdAt, b.createdAt, direction),
-            },
-            {
-                id: "title",
-                header: "العمل/التدريب",
-                sortable: true,
-                cell: (row: ManagedTrainingItem) => (
-                    <span className="font-semibold text-[#1f355d]">
-                        {row.record.trainingTitle}
-                    </span>
+    const trainingColumns = [
+        {
+            id: "date",
+            header: "التاريخ",
+            sortable: true,
+            cell: (row: ManagedTrainingItem) => row.createdAt,
+            sortFn: (
+                a: ManagedTrainingItem,
+                b: ManagedTrainingItem,
+                direction: string,
+            ) => compareStrings(a.createdAt, b.createdAt, direction),
+        },
+        {
+            id: "title",
+            header: "العمل/التدريب",
+            sortable: true,
+            cell: (row: ManagedTrainingItem) => (
+                <span className="font-semibold text-white">
+                    {row.record.trainingTitle}
+                </span>
+            ),
+            sortFn: (
+                a: ManagedTrainingItem,
+                b: ManagedTrainingItem,
+                direction: string,
+            ) =>
+                compareStrings(
+                    a.record.trainingTitle,
+                    b.record.trainingTitle,
+                    direction,
                 ),
-                sortFn: (
-                    a: ManagedTrainingItem,
-                    b: ManagedTrainingItem,
-                    direction: string,
-                ) =>
-                    compareStrings(
-                        a.record.trainingTitle,
-                        b.record.trainingTitle,
-                        direction,
-                    ),
-            },
-            {
-                id: "city",
-                header: "المدينة",
-                sortable: true,
-                cell: (row: ManagedTrainingItem) =>
-                    row.formData.trainingLocation || "غير محدد",
-                sortFn: (
-                    a: ManagedTrainingItem,
-                    b: ManagedTrainingItem,
-                    direction: string,
-                ) =>
-                    compareStrings(
-                        a.formData.trainingLocation,
-                        b.formData.trainingLocation,
-                        direction,
-                    ),
-            },
-            {
-                id: "status",
-                header: "الحالة",
-                cell: (row: ManagedTrainingItem) =>
-                    renderStatusBadge(row.statusLabel, row.statusTone),
-            },
-            {
-                id: "actions",
-                header: "الإجراءات",
-                cell: (row: ManagedTrainingItem) => (
-                    <div className="flex items-center justify-center gap-2.5">
-                        <IconActionButton
-                            label="عرض التفاصيل"
-                            colorClassName="text-[#d48a15] hover:bg-[#fff7ea]"
-                            onClick={() =>
-                                setActivePanel({
-                                    tab: "trainings",
-                                    mode: "details",
-                                    itemId: row.id,
-                                })
-                            }
-                        >
-                            <Eye className="size-[18px]" />
-                        </IconActionButton>
-                        <IconActionButton
-                            label="تعديل التدريب"
-                            colorClassName="text-[#4ea56e] hover:bg-[#eefaf2]"
-                            onClick={() =>
-                                setActivePanel({
-                                    tab: "trainings",
-                                    mode: "edit",
-                                    itemId: row.id,
-                                })
-                            }
-                        >
-                            <PencilLine className="size-[18px]" />
-                        </IconActionButton>
-                        <IconActionButton
-                            label="حذف التدريب"
-                            colorClassName="text-[#c63a35] hover:bg-[#fff1f0]"
-                            onClick={() => handleDeleteTraining(row.id)}
-                        >
-                            <Trash2 className="size-[18px]" />
-                        </IconActionButton>
-                    </div>
+        },
+        {
+            id: "city",
+            header: "المدينة",
+            sortable: true,
+            cell: (row: ManagedTrainingItem) =>
+                row.formData.trainingLocation || "غير محدد",
+            sortFn: (
+                a: ManagedTrainingItem,
+                b: ManagedTrainingItem,
+                direction: string,
+            ) =>
+                compareStrings(
+                    a.formData.trainingLocation,
+                    b.formData.trainingLocation,
+                    direction,
                 ),
-            },
-        ],
-        [],
-    )
+        },
+        {
+            id: "status",
+            header: "الحالة",
+            cell: (row: ManagedTrainingItem) =>
+                renderStatusBadge(row.statusLabel, row.statusTone),
+        },
+        {
+            id: "actions",
+            header: "الإجراءات",
+            cell: (row: ManagedTrainingItem) => (
+                <div className="flex items-center justify-center gap-2.5">
+                    <IconActionButton
+                        label="عرض التفاصيل"
+                        colorClassName="text-[#ffad32] hover:bg-white/12"
+                        onClick={() =>
+                            setActivePanel({
+                                tab: "trainings",
+                                mode: "details",
+                                itemId: row.id,
+                            })
+                        }
+                    >
+                        <Eye className="size-[18px]" />
+                    </IconActionButton>
+                    <IconActionButton
+                        label="تعديل التدريب"
+                        colorClassName="text-[#56c176] hover:bg-white/12"
+                        onClick={() =>
+                            setActivePanel({
+                                tab: "trainings",
+                                mode: "edit",
+                                itemId: row.id,
+                            })
+                        }
+                    >
+                        <PencilLine className="size-[18px]" />
+                    </IconActionButton>
+                    <IconActionButton
+                        label="حذف التدريب"
+                        colorClassName="text-[#ff6a61] hover:bg-white/12"
+                        onClick={() => handleDeleteTraining(row.id)}
+                    >
+                        <Trash2 className="size-[18px]" />
+                    </IconActionButton>
+                </div>
+            ),
+        },
+    ]
+
+    const handleTabChange = (nextTab: PortalOpportunityTab) => {
+        setActiveTab(nextTab)
+        setActivePanel(null)
+    }
 
     function handleDeleteJob(itemId: string) {
         if (!window.confirm("هل تريد حذف هذه الوظيفة من القائمة؟")) {
@@ -552,7 +544,7 @@ export default function PortalCompanyOpportunitiesPage({
 
                         <PortalOpportunityTabs
                             activeTab={activeTab}
-                            onChange={setActiveTab}
+                            onChange={handleTabChange}
                             className="lg:pt-10"
                         />
                     </div>
@@ -562,8 +554,10 @@ export default function PortalCompanyOpportunitiesPage({
                         columns={activeTab === "jobs" ? jobColumns : trainingColumns}
                         showRowNumbers
                         primaryColor="#425a7a"
-                        secondaryColor="#eef9fe"
-                        bodyTextColor="#1f355d"
+                        secondaryColor="#f2fbff"
+                        rowBackgrounds={opportunityTableRowBackgrounds}
+                        textColor="#ffffff"
+                        bodyTextColor="#ffffff"
                         emptyText={
                             activeTab === "jobs"
                                 ? "لا توجد وظائف منشورة حاليًا."

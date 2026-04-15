@@ -45,6 +45,7 @@ interface PortalLayoutProps {
     activePageId: string
     children: ReactNode
     onPageChange?: (pageId: string) => void
+    onProfileClick?: () => void
     profile?: PortalProfile
     className?: string
     contentClassName?: string
@@ -223,6 +224,7 @@ export function PortalLayout({
     activePageId,
     children,
     onPageChange,
+    onProfileClick,
     profile,
     className,
     contentClassName,
@@ -424,7 +426,15 @@ export function PortalLayout({
                                 aria-hidden="true"
                             />
 
-                            <div className="inline-flex items-center gap-[10px] max-[640px]:w-full max-[640px]:justify-start">
+                            <button
+                                type="button"
+                                onClick={onProfileClick}
+                                className={cn(
+                                    "inline-flex items-center gap-[10px] rounded-[14px] bg-transparent p-0 text-start transition duration-200",
+                                    onProfileClick && "cursor-pointer hover:bg-white/10 max-[640px]:w-full max-[640px]:justify-start max-[640px]:rounded-[12px] max-[640px]:px-2 max-[640px]:py-1.5",
+                                )}
+                                aria-label="فتح الملف الشخصي"
+                            >
                                 <div className="grid text-start leading-tight">
                                     <span className="text-size14 font-bold text-inverse-fg">
                                         {resolvedProfile.name}
@@ -447,7 +457,7 @@ export function PortalLayout({
                                         {avatarLabel}
                                     </span>
                                 )}
-                            </div>
+                            </button>
                         </div>
                     </div>
                 </header>
