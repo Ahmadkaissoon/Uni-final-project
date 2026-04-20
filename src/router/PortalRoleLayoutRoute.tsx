@@ -27,9 +27,12 @@ export default function PortalRoleLayoutRoute({
   const [profile, setProfile] = useState(() =>
     getStoredPortalProfileSummary(role),
   );
+  const resolvedPage = getPortalPageByPath(role, location.pathname);
 
   const activePageId =
-    getPortalPageByPath(role, location.pathname)?.id ??
+    (resolvedPage?.id === "internship-details"
+      ? "internships"
+      : resolvedPage?.id) ??
     defaultActivePageByRole[role];
 
   useEffect(() => {

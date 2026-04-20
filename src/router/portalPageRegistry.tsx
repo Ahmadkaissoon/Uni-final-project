@@ -10,6 +10,7 @@ import PortalCompanyProfilePage from "../pages/portal/PortalCompanyProfilePage";
 import PortalCompanyStudiesPage from "../pages/portal/PortalCompanyStudiesPage";
 import PortalAllJobsPage from "../pages/portal/PortalAllJobsPage";
 import PortalHomePage from "../pages/portal/PortalHomePage";
+import PortalInternshipDetailsPage from "../pages/portal/PortalInternshipDetailsPage";
 import PortalInternshipsPage from "../pages/portal/PortalInternshipsPage";
 import PortalPagePlaceholder from "../pages/portal/PortalPagePlaceholder";
 import PortalSavedJobsPage from "../pages/portal/PortalSavedJobsPage";
@@ -23,6 +24,7 @@ export type PortalPageComponent = ComponentType<{
 const portalPageRegistry: Partial<Record<string, PortalPageComponent>> = {
   home: PortalHomePage,
   internships: PortalInternshipsPage,
+  "internship-details": PortalInternshipDetailsPage,
   "jobs-all": PortalAllJobsPage,
   "jobs-categories": PortalAllJobCategoriesPage,
   "company-create-job": PortalCompanyCreateJobPage,

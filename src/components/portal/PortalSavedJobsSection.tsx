@@ -99,7 +99,7 @@ export default function PortalSavedJobsSection({
                                 <p className="mx-auto mt-3 mb-0 max-w-[34rem] text-size16 leading-8 text-foreground-secondary">
                                     {activeTab === "jobs"
                                         ? "عند حفظ أي وظيفة من صفحة التفاصيل ستظهر هنا بنفس التنسيق الجديد."
-                                        : "قسم التدريبات جاهز بصريًا، ويمكننا ربطه بالحفظ الفعلي فور إضافة زر حفظ للتدريبات."}
+                                        : "عند حفظ أي تدريب من صفحة التفاصيل سيظهر هنا مباشرة ضمن تبويب التدريبات."}
                                 </p>
                             </div>
                         )}

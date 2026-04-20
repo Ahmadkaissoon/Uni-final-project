@@ -11,110 +11,26 @@ import {
 } from "../global/ui/select"
 import PortalTrainingOpportunityCard from "./PortalTrainingOpportunityCard"
 import PortalTrainingOpportunityCardSkeleton from "./PortalTrainingOpportunityCardSkeleton"
-
-export interface PortalInternshipOpportunityItem {
-    id: string
-    companyName: string
-    trainingType: string
-    logoSrc?: string
-    logoAlt?: string
-    logoLabel?: string
-    to?: string
-    href?: string
-    target?: string
-    rel?: string
-}
+import {
+    portalInternshipRecords,
+    type PortalInternshipListingItem,
+} from "./portalInternshipsData"
 
 type LoadingMode = "initial" | "filter" | "more" | null
 
 const LOAD_DELAY_MS = 1500
 
-const defaultInternships: PortalInternshipOpportunityItem[] = [
-    {
-        id: "al-mateen-graphic",
-        companyName: "شركة المتين",
-        trainingType: "مصمم غرافيك",
-        to: "/jobs/internships",
-    },
-    {
-        id: "al-noor-ui",
-        companyName: "شركة النور",
-        trainingType: "مصمم واجهات",
-        to: "/jobs/internships",
-    },
-    {
-        id: "al-madaar-frontend",
-        companyName: "شركة المدار",
-        trainingType: "تطوير واجهات",
-        to: "/jobs/internships",
-    },
-    {
-        id: "al-afaq-content",
-        companyName: "شركة الآفاق",
-        trainingType: "كتابة محتوى",
-        to: "/jobs/internships",
-    },
-    {
-        id: "al-ibdaa-marketing",
-        companyName: "شركة الإبداع",
-        trainingType: "تسويق رقمي",
-        to: "/jobs/internships",
-    },
-    {
-        id: "al-qimma-support",
-        companyName: "شركة القمة",
-        trainingType: "خدمة العملاء",
-        to: "/jobs/internships",
-    },
-    {
-        id: "al-sahm-graphic",
-        companyName: "شركة السهم",
-        trainingType: "مصمم غرافيك",
-        to: "/jobs/internships",
-    },
-    {
-        id: "al-bunyan-ui",
-        companyName: "شركة البنيان",
-        trainingType: "مصمم واجهات",
-        to: "/jobs/internships",
-    },
-    {
-        id: "al-riyada-frontend",
-        companyName: "شركة الريادة",
-        trainingType: "تطوير واجهات",
-        to: "/jobs/internships",
-    },
-    {
-        id: "al-bayan-content",
-        companyName: "شركة البيان",
-        trainingType: "كتابة محتوى",
-        to: "/jobs/internships",
-    },
-    {
-        id: "al-mustaqbal-marketing",
-        companyName: "شركة المستقبل",
-        trainingType: "تسويق رقمي",
-        to: "/jobs/internships",
-    },
-    {
-        id: "al-wasl-support",
-        companyName: "شركة الوصل",
-        trainingType: "خدمة العملاء",
-        to: "/jobs/internships",
-    },
-]
-
 interface PortalAllInternshipsSectionProps {
     title?: string
     description?: string
-    internships?: PortalInternshipOpportunityItem[]
+    internships?: PortalInternshipListingItem[]
     itemsPerPage?: number
 }
 
 export default function PortalAllInternshipsSection({
     title = "كافة التدريبات",
     description = "اكتشف أفضل فرص التدريب وقم ببناء تجربة عملية داخل إحدى الشركات الكبرى",
-    internships = defaultInternships,
+    internships = portalInternshipRecords,
     itemsPerPage = 4,
 }: PortalAllInternshipsSectionProps) {
     const [selectedTrainingType, setSelectedTrainingType] = useState("all")
@@ -210,7 +126,7 @@ export default function PortalAllInternshipsSection({
         <section className="py-12 sm:py-16 lg:py-20" dir="rtl">
             <div className="portal-design-shell">
                 <div className="portal-design-inset">
-                    <div className="mb-10 flex flex-col items-end, sm:mb-12">
+                    <div className="mb-10 flex flex-col sm:mb-12">
                         <div className="border-r-[3px] border-warning-color pr-6 text-right">
                             <h1 className="m-0 text-[30px] font-bold leading-[1.3] text-black sm:text-[40px]">
                                 {title}
