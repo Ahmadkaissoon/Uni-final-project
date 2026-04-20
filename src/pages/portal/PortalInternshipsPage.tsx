@@ -6,7 +6,12 @@ interface PortalInternshipsPageProps {
 }
 
 export default function PortalInternshipsPage({
-    page: _page,
+    page,
 }: PortalInternshipsPageProps) {
-    return <PortalAllInternshipsSection />
+    return (
+        <PortalAllInternshipsSection
+            title={page.title}
+            description={page.description}
+        />
+    )
 }

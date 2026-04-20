@@ -101,6 +101,20 @@ export const userPortalPages: PortalPageDefinition[] = [
     ],
   },
   {
+    id: "internship-details",
+    path: "/jobs/internships/details",
+    role: "user",
+    title: "كافة التدريبات",
+    eyebrow: "وظائف المستخدم",
+    description:
+      "اكتشف أفضل فرص التدريب وقم ببناء تجربة عملية داخل إحدى الشركات الكبرى",
+    highlights: [
+      "صفحة مستقلة لتفاصيل التدريب مع الحفاظ على نفس لغة التصميم العامة.",
+      "مناسبة لعرض المعلومات الموسعة، المهارات، والمتطلبات والتدريبات المشابهة.",
+      "يبقى تبويب التدريبات مفعّلًا في الهيدر عند دخول هذه الصفحة.",
+    ],
+  },
+  {
     id: "watchlist",
     path: "/jobs/watchlist",
     role: "user",

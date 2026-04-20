@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 import PortalAllJobCategoriesPage from "../pages/portal/PortalAllJobCategoriesPage";
 import PortalAllJobsPage from "../pages/portal/PortalAllJobsPage";
 import PortalHomePage from "../pages/portal/PortalHomePage";
+import PortalInternshipDetailsPage from "../pages/portal/PortalInternshipDetailsPage";
 import PortalInternshipsPage from "../pages/portal/PortalInternshipsPage";
 import PortalPagePlaceholder from "../pages/portal/PortalPagePlaceholder";
 import PortalSavedJobsPage from "../pages/portal/PortalSavedJobsPage";
@@ -15,6 +16,7 @@ export type PortalPageComponent = ComponentType<{
 const portalPageRegistry: Partial<Record<string, PortalPageComponent>> = {
   home: PortalHomePage,
   internships: PortalInternshipsPage,
+  "internship-details": PortalInternshipDetailsPage,
   "jobs-all": PortalAllJobsPage,
   "jobs-categories": PortalAllJobCategoriesPage,
   "saved-jobs": PortalSavedJobsPage,

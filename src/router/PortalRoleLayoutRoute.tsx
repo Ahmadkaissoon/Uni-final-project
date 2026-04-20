@@ -20,9 +20,12 @@ export default function PortalRoleLayoutRoute({
 }: PortalRoleLayoutRouteProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const resolvedPage = getPortalPageByPath(role, location.pathname);
 
   const activePageId =
-    getPortalPageByPath(role, location.pathname)?.id ??
+    (resolvedPage?.id === "internship-details"
+      ? "internships"
+      : resolvedPage?.id) ??
     defaultActivePageByRole[role];
 
   return (
