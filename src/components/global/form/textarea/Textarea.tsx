@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type KeyboardEventHandler, type ReactNode } from "react";
 import {
   type UseFormReturn,
   type FieldValues,
@@ -19,6 +19,7 @@ interface TextareaProps<T extends FieldValues> {
   onClick?: () => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  onKeyDown?: KeyboardEventHandler<HTMLTextAreaElement>;
   info?: string | ReactNode;
   addingValidStyle?: string;
   required?: boolean;
@@ -37,6 +38,7 @@ function Textarea<T extends FieldValues>({
   onClick = () => {},
   onFocus = () => {},
   onBlur = () => {},
+  onKeyDown,
   info,
   required,
 }: TextareaProps<T>) {
@@ -100,6 +102,7 @@ function Textarea<T extends FieldValues>({
                   }  ${addingTextareaStyle}`}
                   onFocus={onFocus}
                   onBlur={onBlur}
+                  onKeyDown={onKeyDown}
                 />
               }
             </div>
