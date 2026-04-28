@@ -77,6 +77,7 @@ export const portalLayoutConfig: Record<PortalRole, PortalRoleConfig> = {
             { id: "saved-jobs", label: "الوظائف المحفوظة" },
             { id: "companies", label: "الشركات" },
             { id: "career-guidance", label: "الإرشاد الوظيفي" },
+            { id: "conversations", label: "المحادثات" },
         ],
         footerSections: [
             {
@@ -101,6 +102,7 @@ export const portalLayoutConfig: Record<PortalRole, PortalRoleConfig> = {
                     { id: "profile", label: "عرض الملف الشخصي" },
                     { id: "profile-edit", label: "تعديل الملف الشخصي" },
                     { id: "profile-settings", label: "الإعدادات الشخصية" },
+                    { id: "conversations", label: "المحادثات" },
                 ],
             },
         ],
@@ -120,6 +122,7 @@ export const portalLayoutConfig: Record<PortalRole, PortalRoleConfig> = {
             { id: "company-applications", label: "الطلبات" },
             { id: "company-studies", label: "دراسات" },
             { id: "company-guidance", label: "إرشاد وظيفي" },
+            { id: "company-conversations", label: "المحادثات" },
         ],
         footerSections: [
             {
@@ -150,6 +153,7 @@ export const portalLayoutConfig: Record<PortalRole, PortalRoleConfig> = {
                     { id: "company-profile", label: "عرض الملف الشخصي" },
                     { id: "company-profile-edit", label: "تعديل الملف الشخصي" },
                     { id: "company-account", label: "إعدادات الحساب" },
+                    { id: "company-conversations", label: "المحادثات" },
                 ],
             },
         ],
