@@ -185,6 +185,20 @@ export const userPortalPages: PortalPageDefinition[] = [
     ],
   },
   {
+    id: "conversations",
+    path: "/conversations",
+    role: "user",
+    title: "المحادثات",
+    eyebrow: "المساعد الذكي",
+    description:
+      "تحدث مع المساعد الذكي للحصول على دعم سريع في السيرة الذاتية، المقابلات، واختيار الفرص المناسبة لك.",
+    highlights: [
+      "صفحة محادثات مشتركة تحفظ السجل محليًا لكل نوع حساب.",
+      "مناسبة للأسئلة السريعة حول البحث عن عمل والتقديم.",
+      "تظهر ضمن نفس الـ user layout بدون أي تكرار.",
+    ],
+  },
+  {
     id: "profile",
     path: "/profile",
     role: "user",
@@ -339,6 +353,20 @@ export const companyPortalPages: PortalPageDefinition[] = [
       "يمكن استخدامها لمحتوى تثقيفي أو معلوماتي.",
       "ممكن ربطها لاحقًا بنظام مقالات أو منشورات.",
       "تظل الصفحة child داخل company layout.",
+    ],
+  },
+  {
+    id: "company-conversations",
+    path: "/company/conversations",
+    role: "company",
+    title: "المحادثات",
+    eyebrow: "المساعد الذكي",
+    description:
+      "تحدث مع المساعد الذكي لمساعدتك في كتابة الوظائف، فرز المتقدمين، وبناء خطط تدريب أو توظيف داخل الشركة.",
+    highlights: [
+      "صفحة محادثات مشتركة تحفظ السجل محليًا لكل نوع حساب.",
+      "مناسبة للاستفسارات اليومية السريعة لفريق التوظيف.",
+      "تظهر ضمن نفس الـ company layout بدون أي تكرار.",
     ],
   },
   {
