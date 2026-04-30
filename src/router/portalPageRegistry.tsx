@@ -28,7 +28,6 @@ const portalPageRegistry: Partial<Record<string, PortalPageComponent>> = {
   "internship-details": PortalInternshipDetailsPage,
   "jobs-all": PortalAllJobsPage,
   "jobs-categories": PortalAllJobCategoriesPage,
-<<<<<<< HEAD
   "company-create-job": PortalCompanyCreateJobPage,
   "company-create-training": PortalCompanyCreateTrainingPage,
   "company-applications": PortalCompanyApplicationsPage,
@@ -44,12 +43,8 @@ const portalPageRegistry: Partial<Record<string, PortalPageComponent>> = {
   "profile-edit": PortalUserProfilePage,
   "saved-jobs": PortalSavedJobsPage,
   "companies-home": PortalHomePage,
-=======
   conversations: PortalConversationsPage,
-  "saved-jobs": PortalSavedJobsPage,
-  "company-home": PortalHomePage,
   "company-conversations": PortalConversationsPage,
->>>>>>> origin/main
 };
 
 export function renderPortalPageElement(page: PortalPageDefinition) {
