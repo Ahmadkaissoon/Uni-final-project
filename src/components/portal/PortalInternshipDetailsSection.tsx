@@ -9,13 +9,18 @@ import {
     SendHorizontal,
 } from "lucide-react"
 import { useState, type ReactNode } from "react"
-import { Link } from "react-router-dom"
 
 import { cn } from "../../utils/cn"
 import { Button } from "../global/ui/button"
+import { PortalCompanyDetailsView } from "./PortalAllCompaniesSection"
 import PortalDetailBulletSection from "./PortalDetailBulletSection"
 import PortalInternshipSimilarCard from "./PortalInternshipSimilarCard"
 import PortalJobApplicationModal from "./PortalJobApplicationModal"
+import {
+    normalizePortalCompanyValue,
+    portalCompanyDirectoryItems,
+    type PortalCompanyDirectoryItem,
+} from "./portalCompaniesData"
 import PortalJobDetailFact from "./PortalJobDetailFact"
 import type {
     PortalInternshipQuickFact,
@@ -40,9 +45,31 @@ export default function PortalInternshipDetailsSection({
     showActions = true,
 }: PortalInternshipDetailsSectionProps) {
     const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false)
+    const [selectedCompany, setSelectedCompany] =
+        useState<PortalCompanyDirectoryItem | null>(null)
     const { isSavedTraining, toggleSavedTraining } = usePortalSavedTrainings()
     const isSaved = isSavedTraining(internship.id)
-    const companyPageTo = internship.companyPageTo ?? "/companies/all"
+    const internshipCompany = createCompanyItemFromInternship(internship)
+    const companiesForDetails = getCompaniesForDetails(internshipCompany)
+
+    function handleSelectCompany(company: PortalCompanyDirectoryItem) {
+        setSelectedCompany(company)
+        window.requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, behavior: "smooth" })
+        })
+    }
+
+    if (selectedCompany) {
+        return (
+            <PortalCompanyDetailsView
+                company={selectedCompany}
+                companies={companiesForDetails}
+                title="كافة الشركات"
+                description="يمكنك هنا إيجاد جميع الشركات المسجلة في منصتنا."
+                onSelectCompany={handleSelectCompany}
+            />
+        )
+    }
 
     return (
         <section className="pb-12 pt-10 sm:pb-18 sm:pt-12" dir="rtl">
@@ -85,12 +112,15 @@ export default function PortalInternshipDetailsSection({
                             </div>
 
                             <div className="mt-5 flex flex-col items-stretch gap-3 min-[520px]:mt-6 min-[520px]:flex-row min-[520px]:items-center min-[520px]:gap-4">
-                                <Link
-                                    to={companyPageTo}
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        handleSelectCompany(internshipCompany)
+                                    }
                                     className="inline-flex min-h-[42px] w-full items-center justify-center rounded-[8px] border border-[#3b63c6] bg-[#5f86dd] px-3 py-1.5 text-sm font-bold text-white transition duration-200 hover:brightness-105 min-[520px]:w-auto min-[520px]:px-4 min-[520px]:py-2 min-[520px]:text-size16 min-[1440px]:!px-5"
                                 >
                                     عرض الشركة
-                                </Link>
+                                </button>
 
                                 <div className="inline-flex items-center gap-2 self-start text-sm font-medium text-black min-[520px]:text-size16">
                                     <MapPin className="size-4 shrink-0 text-warning-color min-[520px]:size-5" />
@@ -221,6 +251,32 @@ export default function PortalInternshipDetailsSection({
             ) : null}
         </section>
     )
+}
+
+function createCompanyItemFromInternship(
+    internship: PortalInternshipRecord,
+): PortalCompanyDirectoryItem {
+    return {
+        id: normalizePortalCompanyValue(
+            internship.companyWebsite || internship.companyName,
+        ),
+        companyName: internship.companyName,
+        companyWebsite: internship.companyWebsite,
+        logoSrc: internship.logoSrc,
+        logoAlt: internship.logoAlt ?? internship.companyName,
+        logoLabel: internship.logoLabel,
+        to: internship.companyPageTo ?? "/companies/all",
+    }
+}
+
+function getCompaniesForDetails(company: PortalCompanyDirectoryItem) {
+    const hasCurrentCompany = portalCompanyDirectoryItems.some(
+        (directoryCompany) => directoryCompany.id === company.id,
+    )
+
+    return hasCurrentCompany
+        ? portalCompanyDirectoryItems
+        : [company, ...portalCompanyDirectoryItems]
 }
 
 function resolveQuickFactIcon(fact: PortalInternshipQuickFact): ReactNode {

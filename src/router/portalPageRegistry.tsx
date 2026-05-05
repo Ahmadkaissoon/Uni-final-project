@@ -48,6 +48,7 @@ const portalPageRegistry: Partial<Record<string, PortalPageComponent>> = {
     companies: PortalAllCompaniesPage,
     "companies-all": PortalAllCompaniesPage,
     "career-guidance": PortalCareerGuidancePage,
+    "company-guidance": PortalCareerGuidancePage,
     watchlist: PortalWatchlistPage,
 }
 
