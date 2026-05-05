@@ -29,6 +29,7 @@ interface PortalInternshipDetailsSectionProps {
     description?: string
     internship: PortalInternshipRecord
     relatedInternships?: PortalInternshipRecord[]
+    showActions?: boolean
 }
 
 export default function PortalInternshipDetailsSection({
@@ -36,6 +37,7 @@ export default function PortalInternshipDetailsSection({
     description = "اكتشف أفضل فرص التدريب وقم ببناء تجربة عملية داخل إحدى الشركات الكبرى",
     internship,
     relatedInternships = [],
+    showActions = true,
 }: PortalInternshipDetailsSectionProps) {
     const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false)
     const { isSavedTraining, toggleSavedTraining } = usePortalSavedTrainings()
@@ -96,46 +98,48 @@ export default function PortalInternshipDetailsSection({
                                 </div>
                             </div>
 
-                            <div className="mt-7 flex flex-col gap-3 min-[900px]:mt-8 min-[900px]:flex-row min-[900px]:items-center min-[900px]:gap-4">
-                                <Button
-                                    type="button"
-                                    variant="panel"
-                                    size="normal"
-                                    onClick={() =>
-                                        setIsApplicationModalOpen(true)
-                                    }
-                                    className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl border border-[#4da76f] bg-[#5ab37b] !px-4 !py-2 !text-base !font-bold !text-white hover:!brightness-105 min-[480px]:min-h-[52px] min-[480px]:!text-size18 min-[900px]:w-auto min-[1440px]:!px-6 min-[1440px]:!py-3"
-                                >
-                                    <SendHorizontal className="ml-3 size-4 min-[480px]:size-5" />
-                                    إرسال الطلب
-                                </Button>
+                            {showActions ? (
+                                <div className="mt-7 flex flex-col gap-3 min-[900px]:mt-8 min-[900px]:flex-row min-[900px]:items-center min-[900px]:gap-4">
+                                    <Button
+                                        type="button"
+                                        variant="panel"
+                                        size="normal"
+                                        onClick={() =>
+                                            setIsApplicationModalOpen(true)
+                                        }
+                                        className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl border border-[#4da76f] bg-[#5ab37b] !px-4 !py-2 !text-base !font-bold !text-white hover:!brightness-105 min-[480px]:min-h-[52px] min-[480px]:!text-size18 min-[900px]:w-auto min-[1440px]:!px-6 min-[1440px]:!py-3"
+                                    >
+                                        <SendHorizontal className="ml-3 size-4 min-[480px]:size-5" />
+                                        إرسال الطلب
+                                    </Button>
 
-                                <Button
-                                    type="button"
-                                    variant="panel"
-                                    size="normal"
-                                    aria-pressed={isSaved}
-                                    onClick={() =>
-                                        toggleSavedTraining(internship.id)
-                                    }
-                                    className={cn(
-                                        "inline-flex min-h-[48px] w-full items-center justify-center rounded-xl !px-4 !py-2 !text-base !font-bold transition duration-200 min-[480px]:min-h-[52px] min-[480px]:!text-size18 min-[900px]:w-auto min-[1440px]:!px-6 min-[1440px]:!py-3",
-                                        isSaved
-                                            ? "border border-[#b52f2f] bg-white !text-[#b52f2f] hover:!bg-[#fff6f5]"
-                                            : "border border-[#b52f2f] bg-[#c43833] !text-white hover:!brightness-105",
-                                    )}
-                                >
-                                    <Heart
+                                    <Button
+                                        type="button"
+                                        variant="panel"
+                                        size="normal"
+                                        aria-pressed={isSaved}
+                                        onClick={() =>
+                                            toggleSavedTraining(internship.id)
+                                        }
                                         className={cn(
-                                            "ml-3 size-4 min-[480px]:size-5",
-                                            isSaved && "fill-current",
+                                            "inline-flex min-h-[48px] w-full items-center justify-center rounded-xl !px-4 !py-2 !text-base !font-bold transition duration-200 min-[480px]:min-h-[52px] min-[480px]:!text-size18 min-[900px]:w-auto min-[1440px]:!px-6 min-[1440px]:!py-3",
+                                            isSaved
+                                                ? "border border-[#b52f2f] bg-white !text-[#b52f2f] hover:!bg-[#fff6f5]"
+                                                : "border border-[#b52f2f] bg-[#c43833] !text-white hover:!brightness-105",
                                         )}
-                                    />
-                                    {isSaved
-                                        ? "إزالة من المحفوظات"
-                                        : "إضافة إلى المحفوظات"}
-                                </Button>
-                            </div>
+                                    >
+                                        <Heart
+                                            className={cn(
+                                                "ml-3 size-4 min-[480px]:size-5",
+                                                isSaved && "fill-current",
+                                            )}
+                                        />
+                                        {isSaved
+                                            ? "إزالة من المحفوظات"
+                                            : "إضافة إلى المحفوظات"}
+                                    </Button>
+                                </div>
+                            ) : null}
                         </div>
 
                         <div className="grid w-full gap-4 min-[520px]:grid-cols-2 min-[520px]:gap-5 lg:w-[280px] lg:grid-cols-1">
@@ -209,10 +213,12 @@ export default function PortalInternshipDetailsSection({
                 </div>
             </div>
 
-            <PortalJobApplicationModal
-                open={isApplicationModalOpen}
-                onOpenChange={setIsApplicationModalOpen}
-            />
+            {showActions ? (
+                <PortalJobApplicationModal
+                    open={isApplicationModalOpen}
+                    onOpenChange={setIsApplicationModalOpen}
+                />
+            ) : null}
         </section>
     )
 }

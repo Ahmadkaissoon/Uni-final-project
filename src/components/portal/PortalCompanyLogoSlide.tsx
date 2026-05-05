@@ -13,6 +13,7 @@ interface PortalCompanyLogoSlideProps {
     rel?: string
     onClick?: () => void
     className?: string
+    showCompanyName?: boolean
 }
 
 function getCompanyInitials(companyName: string) {
@@ -38,6 +39,7 @@ export default function PortalCompanyLogoSlide({
     rel,
     onClick,
     className,
+    showCompanyName = false,
 }: PortalCompanyLogoSlideProps) {
     const sharedClassName = cn(
         "portal-company-logo-card flex aspect-[1.18/1] w-full items-center justify-center rounded-[8px] border border-black/5 bg-white px-6 py-6 text-center transition duration-300",
@@ -46,7 +48,26 @@ export default function PortalCompanyLogoSlide({
         className,
     )
 
-    const content = logoSrc ? (
+    const content = showCompanyName ? (
+        <div className="flex flex-col items-center justify-center gap-3">
+            <span className="inline-flex size-[88px] items-center justify-center overflow-hidden rounded-full bg-[#eef2f6] p-3">
+                {logoSrc ? (
+                    <img
+                        src={logoSrc}
+                        alt={logoAlt ?? companyName}
+                        className="h-full w-full object-cover"
+                    />
+                ) : (
+                    <span className="px-2 text-[28px] font-extrabold tracking-[0.08em] text-[#213b63]">
+                        {logoLabel ?? getCompanyInitials(companyName)}
+                    </span>
+                )}
+            </span>
+            <span className="text-size20 font-bold text-black">
+                {companyName}
+            </span>
+        </div>
+    ) : logoSrc ? (
         <img
             src={logoSrc}
             alt={logoAlt ?? companyName}

@@ -25,7 +25,9 @@ export default function PortalRoleLayoutRoute({
   const activePageId =
     (resolvedPage?.id === "internship-details"
       ? "internships"
-      : resolvedPage?.id) ??
+      : resolvedPage?.id === "companies-all"
+        ? "companies"
+        : resolvedPage?.id) ??
     defaultActivePageByRole[role];
 
   return (
