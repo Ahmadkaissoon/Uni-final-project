@@ -2,6 +2,7 @@ import {
   type ChangeEvent,
   type CSSProperties,
   type ReactNode,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -12,7 +13,18 @@ import { useNavigate } from "react-router-dom";
 import Stepper, {
   type StepType,
 } from "../../../components/global/stepper/Stepper";
+import {
+  emptyPersonProfileData,
+  personProfileEditorConfig,
+  type PersonProfileData,
+} from "../../../utils/portalProfileSchemas";
 import { cn } from "../../../utils/cn";
+import {
+  notifyPortalProfileUpdate,
+  writeStoredAvatar,
+  readStoredProfile,
+  writeStoredProfile,
+} from "../../../utils/portalProfileStorage";
 
 type WizardStepKey =
   | "personal"
@@ -20,30 +32,16 @@ type WizardStepKey =
   | "education"
   | "achievements";
 
-interface PersonProfileData {
-  fullName: string;
-  gender: string;
-  birthDate: string;
-  phone: string;
-  country: string;
-  city: string;
-  address: string;
+interface PersonWizardProfileData extends PersonProfileData {
   profileImageName: string;
   cvFileName: string;
-  jobLevel: string;
-  yearsExperience: string;
-  lastCompany: string;
-  workType: string;
-  latestDegree: string;
-  specialization: string;
-  university: string;
-  graduationYear: string;
-  languages: string;
-  topAchievement: string;
-  portfolioLink: string;
-  professionalProfile: string;
-  projectSummary: string;
 }
+
+const emptyPersonWizardProfileData: PersonWizardProfileData = {
+  ...emptyPersonProfileData,
+  profileImageName: "",
+  cvFileName: "",
+};
 
 const wizardSteps: Array<{ key: WizardStepKey; label: string }> = [
   { key: "personal", label: "المعلومات الشخصية" },
@@ -92,30 +90,12 @@ function PersonProfileWizard() {
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [formData, setFormData] = useState<PersonProfileData>({
-    fullName: "",
-    gender: "",
-    birthDate: "",
-    phone: "",
-    country: "",
-    city: "",
-    address: "",
-    profileImageName: "",
-    cvFileName: "",
-    jobLevel: "",
-    yearsExperience: "",
-    lastCompany: "",
-    workType: "",
-    latestDegree: "",
-    specialization: "",
-    university: "",
-    graduationYear: "",
-    languages: "",
-    topAchievement: "",
-    portfolioLink: "",
-    professionalProfile: "",
-    projectSummary: "",
-  });
+  const [formData, setFormData] = useState<PersonWizardProfileData>(() =>
+    readStoredProfile<PersonWizardProfileData>(
+      personProfileEditorConfig.storageKey,
+      emptyPersonWizardProfileData,
+    ),
+  );
 
   const steps: StepType[] = useMemo(
     () =>
@@ -126,9 +106,9 @@ function PersonProfileWizard() {
     [],
   );
 
-  const updateField = <K extends keyof PersonProfileData>(
+  const updateField = <K extends keyof PersonWizardProfileData>(
     field: K,
-    value: PersonProfileData[K],
+    value: PersonWizardProfileData[K],
   ) => {
     setFormData((current) => ({
       ...current,
@@ -141,7 +121,31 @@ function PersonProfileWizard() {
     (event: ChangeEvent<HTMLInputElement>) => {
       const selectedFile = event.target.files?.[0];
       updateField(field, selectedFile?.name ?? "");
+
+      if (field !== "profileImageName" || !selectedFile) {
+        return;
+      }
+
+      const fileReader = new FileReader();
+
+      fileReader.onload = () => {
+        const nextAvatar =
+          typeof fileReader.result === "string" ? fileReader.result : null;
+
+        writeStoredAvatar(personProfileEditorConfig.avatarStorageKey, nextAvatar);
+        notifyPortalProfileUpdate("user");
+      };
+
+      fileReader.readAsDataURL(selectedFile);
     };
+
+  useEffect(() => {
+    writeStoredProfile<PersonWizardProfileData>(
+      personProfileEditorConfig.storageKey,
+      formData,
+    );
+    notifyPortalProfileUpdate("user");
+  }, [formData]);
 
   const handleNextStep = () => {
     setIsCompleted(false);
