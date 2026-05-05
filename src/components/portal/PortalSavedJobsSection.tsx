@@ -2,6 +2,9 @@ import { Plus } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { Button } from "../global/ui/button"
+import PortalOpportunityTabs, {
+    type PortalOpportunityTab,
+} from "./PortalOpportunityTabs"
 import PortalSavedOpportunityCard from "./PortalSavedOpportunityCard"
 
 export interface PortalSavedOpportunityItem {
@@ -25,8 +28,6 @@ interface PortalSavedJobsSectionProps {
     itemsPerPage?: number
 }
 
-type SavedTab = "jobs" | "trainings"
-
 export default function PortalSavedJobsSection({
     title = "كافة الوظائف المحفوظة",
     description = "هنا ستجد جميع الوظائف، وفرص التدريب التي قمت بالإعجاب بها لتقدم عليها.",
@@ -34,7 +35,7 @@ export default function PortalSavedJobsSection({
     savedTrainings = [],
     itemsPerPage = 4,
 }: PortalSavedJobsSectionProps) {
-    const [activeTab, setActiveTab] = useState<SavedTab>("jobs")
+    const [activeTab, setActiveTab] = useState<PortalOpportunityTab>("jobs")
     const [visiblePages, setVisiblePages] = useState(1)
 
     const activeItems = useMemo(
@@ -46,7 +47,7 @@ export default function PortalSavedJobsSection({
     const visibleItems = activeItems.slice(0, visibleCount)
     const canShowMore = visibleCount < activeItems.length
 
-    function handleTabChange(nextTab: SavedTab) {
+    function handleTabChange(nextTab: PortalOpportunityTab) {
         setActiveTab(nextTab)
         setVisiblePages(1)
     }
@@ -65,24 +66,11 @@ export default function PortalSavedJobsSection({
                             </p>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-3 lg:pt-10">
-                            <button
-                                type="button"
-                                onClick={() => handleTabChange("jobs")}
-                                className={cnSavedTabButton(activeTab === "jobs")}
-                            >
-                                فرص عمل
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => handleTabChange("trainings")}
-                                className={cnSavedTabButton(
-                                    activeTab === "trainings",
-                                )}
-                            >
-                                تدريبات
-                            </button>
-                        </div>
+                        <PortalOpportunityTabs
+                            activeTab={activeTab}
+                            onChange={handleTabChange}
+                            className="lg:pt-10"
+                        />
                     </div>
 
                     <div className="flex flex-col gap-4">
@@ -142,14 +130,5 @@ export default function PortalSavedJobsSection({
             </div>
         </section>
     )
-}
-
-function cnSavedTabButton(isActive: boolean) {
-    return [
-        "inline-flex min-h-[38px] items-center justify-center rounded-full px-6 py-2 text-size13 font-bold transition duration-200",
-        isActive
-            ? "border border-[#2f5cb9] bg-[#2f5cb9] text-white shadow-[0_10px_24px_rgb(47_92_185_/_0.18)]"
-            : "border border-[#2f5cb9] bg-white text-[#2f5cb9] hover:bg-[#f5f8ff]",
-    ].join(" ")
 }
 

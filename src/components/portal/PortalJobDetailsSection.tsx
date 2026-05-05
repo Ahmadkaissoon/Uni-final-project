@@ -12,12 +12,14 @@ interface PortalJobDetailsSectionProps {
     title?: string
     description?: string
     job: PortalJobRecord
+    showActions?: boolean
 }
 
 export default function PortalJobDetailsSection({
     title = "كافة الوظائف",
     description = "اكتشف أفضل الفرص المناسبة لك وابدأ بعرض خدماتك على الشركات",
     job,
+    showActions = true,
 }: PortalJobDetailsSectionProps) {
     const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false)
     const { isSavedJob, toggleSavedJob } = usePortalSavedJobs()
@@ -86,49 +88,53 @@ export default function PortalJobDetailsSection({
                         ))}
                     </div>
 
-                    <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-                        <Button
-                            type="button"
-                            variant="panel"
-                            size="normal"
-                            onClick={() => setIsApplicationModalOpen(true)}
-                            className="inline-flex min-h-[52px] w-full items-center justify-center rounded-[10px] border border-[#4da76f] bg-[#5ab37b] !px-6 !py-3 !text-size18 !font-bold !text-white hover:!brightness-105 sm:w-auto"
-                        >
-                            <SendHorizontal className="ml-3 size-5" />
-                            إرسال الطلب
-                        </Button>
+                    {showActions ? (
+                        <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+                            <Button
+                                type="button"
+                                variant="panel"
+                                size="normal"
+                                onClick={() => setIsApplicationModalOpen(true)}
+                                className="inline-flex min-h-[52px] w-full items-center justify-center rounded-[10px] border border-[#4da76f] bg-[#5ab37b] !px-6 !py-3 !text-size18 !font-bold !text-white hover:!brightness-105 sm:w-auto"
+                            >
+                                <SendHorizontal className="ml-3 size-5" />
+                                إرسال الطلب
+                            </Button>
 
-                        <Button
-                            type="button"
-                            variant="panel"
-                            size="normal"
-                            aria-pressed={isSaved}
-                            onClick={() => toggleSavedJob(job.id)}
-                            className={cn(
-                                "inline-flex min-h-[52px] w-full items-center justify-center rounded-[10px] !px-6 !py-3 !text-size18 !font-bold transition duration-200 sm:w-auto",
-                                isSaved
-                                    ? "border border-[#b52f2f] bg-white !text-[#b52f2f] hover:!bg-[#fff6f5]"
-                                    : "border border-[#b52f2f] bg-[#c43833] !text-white hover:!brightness-105",
-                            )}
-                        >
-                            <Heart
+                            <Button
+                                type="button"
+                                variant="panel"
+                                size="normal"
+                                aria-pressed={isSaved}
+                                onClick={() => toggleSavedJob(job.id)}
                                 className={cn(
-                                    "ml-3 size-5",
-                                    isSaved && "fill-current",
+                                    "inline-flex min-h-[52px] w-full items-center justify-center rounded-[10px] !px-6 !py-3 !text-size18 !font-bold transition duration-200 sm:w-auto",
+                                    isSaved
+                                        ? "border border-[#b52f2f] bg-white !text-[#b52f2f] hover:!bg-[#fff6f5]"
+                                        : "border border-[#b52f2f] bg-[#c43833] !text-white hover:!brightness-105",
                                 )}
-                            />
-                            {isSaved
-                                ? "إزالة من المحفوظات"
-                                : "إضافة إلى المحفوظات"}
-                        </Button>
-                    </div>
+                            >
+                                <Heart
+                                    className={cn(
+                                        "ml-3 size-5",
+                                        isSaved && "fill-current",
+                                    )}
+                                />
+                                {isSaved
+                                    ? "إزالة من المحفوظات"
+                                    : "إضافة إلى المحفوظات"}
+                            </Button>
+                        </div>
+                    ) : null}
                 </div>
             </div>
 
-            <PortalJobApplicationModal
-                open={isApplicationModalOpen}
-                onOpenChange={setIsApplicationModalOpen}
-            />
+            {showActions ? (
+                <PortalJobApplicationModal
+                    open={isApplicationModalOpen}
+                    onOpenChange={setIsApplicationModalOpen}
+                />
+            ) : null}
         </section>
     )
 }
