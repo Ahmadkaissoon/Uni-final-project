@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+import { resolveAuthRedirect, useLogin } from "../../../api";
 import blueLogo from "../../../assets/icons/blue_logo.png";
 
 const DEMO_RESET_EMAIL = "ahmad.kaissoon@gamil.com";
@@ -26,26 +27,36 @@ function Login({
   onForgotPassword,
 }: LoginProps) {
   const navigate = useNavigate();
+  const loginMutation = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isBusy = isLoading || isSubmitting;
+  const isBusy = isLoading || isSubmitting || loginMutation.isPending;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!onSubmit) {
+    if (!email.trim() || !password) {
       return;
     }
 
     try {
       setIsSubmitting(true);
-      await onSubmit({
+      if (onSubmit) {
+        await onSubmit({
+          email: email.trim(),
+          password,
+        });
+        return;
+      }
+
+      const response = await loginMutation.mutateAsync({
         email: email.trim(),
         password,
       });
+      navigate(resolveAuthRedirect(response));
     } finally {
       setIsSubmitting(false);
     }

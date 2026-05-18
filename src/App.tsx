@@ -9,6 +9,7 @@ import {
 } from "./router/portalPages";
 import Login from "./pages/global/login/Login";
 import AccountTypeSelection from "./pages/global/register/AccountTypeSelection";
+import SonnerToast from "./components/global/toast/SonnerToast";
 import CompanyProfileWizard from "./pages/global/register/CompanyProfileWizard";
 import PersonProfileWizard from "./pages/global/register/PersonProfileWizard";
 import Register from "./pages/global/register/Register";
@@ -19,6 +20,7 @@ import RouterNotFoundPage from "./pages/portal/RouterNotFoundPage";
 function App() {
   return (
     <BrowserRouter>
+      <SonnerToast />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

@@ -8,6 +8,11 @@ import {
 import { ChevronDown, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+import {
+  buildCompanySignupPayload,
+  readRegisterCredentials,
+  useSignup,
+} from "../../../api";
 import Stepper, {
   type StepType,
 } from "../../../components/global/stepper/Stepper";
@@ -71,6 +76,8 @@ function CompanyProfileWizard() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [submissionError, setSubmissionError] = useState("");
+  const signupMutation = useSignup();
   const [formData, setFormData] = useState<CompanyProfileData>(() =>
     readStoredProfile<CompanyProfileData>(
       companyProfileEditorConfig.storageKey,
@@ -117,8 +124,30 @@ function CompanyProfileWizard() {
     setCurrentStep((current) => Math.max(current - 1, 0));
   };
 
-  const handleFinish = () => {
-    setIsCompleted(true);
+  const handleFinish = async () => {
+    const credentials = readRegisterCredentials();
+
+    if (!credentials) {
+      navigate("/register");
+      return;
+    }
+
+    setSubmissionError("");
+
+    try {
+      await signupMutation.mutateAsync(
+        buildCompanySignupPayload(credentials, formData),
+      );
+      setIsCompleted(true);
+      navigate("/company");
+    } catch (error) {
+      setIsCompleted(false);
+      setSubmissionError(
+        error instanceof Error
+          ? error.message
+          : "تعذر إنشاء الحساب، يرجى المحاولة مرة أخرى.",
+      );
+    }
   };
 
   const currentStepKey = companyWizardSteps[currentStep]?.key;
@@ -333,6 +362,12 @@ function CompanyProfileWizard() {
                 </div>
               ) : null}
 
+              {submissionError ? (
+                <div className="rounded-[14px] border border-[#c96868] bg-[#fff0f0] px-4 py-3 text-right text-size16 text-[#9d3434]">
+                  {submissionError}
+                </div>
+              ) : null}
+
               <div className="flex flex-wrap items-end justify-end gap-3">
                 {currentStep > 0 ? (
                   <button
@@ -351,7 +386,8 @@ function CompanyProfileWizard() {
                       ? handleFinish
                       : handleNextStep
                   }
-                  className="min-w-[140px] cursor-pointer rounded-[10px] bg-[#5faa73] px-6 py-3 text-size18 font-medium text-white transition duration-200 hover:brightness-95"
+                  disabled={signupMutation.isPending}
+                  className="min-w-[140px] cursor-pointer rounded-[10px] bg-[#5faa73] px-6 py-3 text-size18 font-medium text-white transition duration-200 hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {currentStep === companyWizardSteps.length - 1
                     ? "تأكيد"
