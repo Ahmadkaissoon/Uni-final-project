@@ -281,6 +281,10 @@ export function resolveAuthRedirect(response: LoginResponse | SignupResponse) {
       ? response.role ?? response.user?.role
       : (response.user as AuthUser | undefined)?.role;
 
+  if (role === "admin") {
+    return "/admin";
+  }
+
   return role === "company" ? "/company" : "/";
 }
 

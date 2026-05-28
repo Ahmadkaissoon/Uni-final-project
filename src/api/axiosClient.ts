@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const apiUrl = import.meta.env.VITE_API_URL ?? "https://yousef.pythonanywhere.com";
+const apiUrl = import.meta.env.VITE_API_URL ?? "https://job-entry.obaidana.xyz";
 const authTokenStorageKeys = ["access_token", "token", "auth_token"];
 
 function readStoredAuthToken() {

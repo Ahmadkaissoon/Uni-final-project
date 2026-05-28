@@ -3,6 +3,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { resolveAuthRedirect, useLogin } from "../../../api";
+import { demoCurrentAdminCredentials } from "../../../api/adminManagers";
 import blueLogo from "../../../assets/icons/blue_logo.png";
 
 const DEMO_RESET_EMAIL = "ahmad.kaissoon@gamil.com";
@@ -49,6 +50,14 @@ function Login({
           email: email.trim(),
           password,
         });
+        return;
+      }
+
+      if (
+        email.trim().toLowerCase() === demoCurrentAdminCredentials.email &&
+        password === demoCurrentAdminCredentials.password
+      ) {
+        navigate("/admin");
         return;
       }
 

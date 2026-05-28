@@ -1,12 +1,21 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
+import AdminLayoutRoute from "./router/AdminLayoutRoute";
 import CompanyLayoutRoute from "./router/CompanyLayoutRoute";
 import UserLayoutRoute from "./router/UserLayoutRoute";
 import { renderPortalPageElement } from "./router/portalPageRegistry";
+import { adminPages } from "./router/adminPages";
 import {
   companyPortalPages,
   userPortalPages,
 } from "./router/portalPages";
+import AdminOverviewPage from "./pages/admin/AdminOverviewPage";
+import AdminPagePlaceholder from "./pages/admin/AdminPagePlaceholder";
+import AdminCompaniesPage from "./pages/admin/AdminCompaniesPage";
+import AdminJobsPage from "./pages/admin/AdminJobsPage";
+import AdminManagersPage from "./pages/admin/AdminManagersPage";
+import AdminSeekersPage from "./pages/admin/AdminSeekersPage";
+import AdminTrainingsPage from "./pages/admin/AdminTrainingsPage";
 import Login from "./pages/global/login/Login";
 import AccountTypeSelection from "./pages/global/register/AccountTypeSelection";
 import SonnerToast from "./components/global/toast/SonnerToast";
@@ -46,6 +55,32 @@ function App() {
               key={page.id}
               path={page.path}
               element={renderPortalPageElement(page)}
+            />
+          ))}
+        </Route>
+
+        <Route element={<AdminLayoutRoute />}>
+          {adminPages.map((page) => (
+            <Route
+              key={page.id}
+              path={page.path}
+              element={
+                page.id === "admin-overview" ? (
+                  <AdminOverviewPage />
+                ) : page.id === "admin-seekers" ? (
+                  <AdminSeekersPage />
+                ) : page.id === "admin-managers" ? (
+                  <AdminManagersPage />
+                ) : page.id === "admin-companies" ? (
+                  <AdminCompaniesPage />
+                ) : page.id === "admin-jobs" ? (
+                  <AdminJobsPage />
+                ) : page.id === "admin-trainings" ? (
+                  <AdminTrainingsPage />
+                ) : (
+                  <AdminPagePlaceholder page={page} />
+                )
+              }
             />
           ))}
         </Route>
