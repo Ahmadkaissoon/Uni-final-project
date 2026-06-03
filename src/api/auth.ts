@@ -8,6 +8,19 @@ import { withApiToast } from "./apiToast";
 import axiosClient from "./axiosClient";
 
 export const REGISTER_CREDENTIALS_STORAGE_KEY = "register-credentials";
+const REGISTER_ACCOUNT_ROLE_STORAGE_KEY = "selected-account-role";
+const AUTH_TOKEN_STORAGE_KEYS = [
+  "access_token",
+  "refresh_token",
+  "token",
+  "auth_token",
+];
+const REGISTER_PROFILE_STORAGE_KEYS = [
+  "portal.company.profile",
+  "portal.company.profile.avatar",
+  "portal.user.profile",
+  "portal.user.profile.avatar",
+];
 
 export interface RegisterCredentials {
   email: string;
@@ -39,7 +52,11 @@ export interface SignupResponse extends AuthTokens {
   user?: unknown;
 }
 
-export interface SeekerSignupPayload extends RegisterCredentials {
+export interface LogoutResponse {
+  message?: string;
+}
+
+export interface SeekerSignupDataPayload extends RegisterCredentials {
   role: "seeker";
   seekerProfile: {
     fullName: string;
@@ -51,7 +68,6 @@ export interface SeekerSignupPayload extends RegisterCredentials {
     address: string;
     jobLevel: string;
     yearsOfExperience: number;
-    lastCompanyName: string;
     workType: string;
     lastDegree: string;
     specialization: string;
@@ -61,15 +77,10 @@ export interface SeekerSignupPayload extends RegisterCredentials {
       language: string;
       level: string;
     }>;
-    personalWebsite: string;
-    linkedin: string;
-    github: string;
-    behance: string;
-    profileImageUrl: string;
   };
 }
 
-export interface CompanySignupPayload extends RegisterCredentials {
+export interface CompanySignupDataPayload extends RegisterCredentials {
   role: "company";
   companyProfile: {
     companyName: string;
@@ -81,12 +92,11 @@ export interface CompanySignupPayload extends RegisterCredentials {
     hrManagerName: string;
     numberOfEmployees: number;
     address: string;
-    website: string;
-    jobTypes: string[];
-    monthlyJobPostsPlanned: number;
-    companyRecommendations: string;
   };
 }
+
+export type CompanySignupPayload = FormData;
+export type SeekerSignupPayload = FormData;
 
 export type SignupPayload = SeekerSignupPayload | CompanySignupPayload;
 
@@ -102,17 +112,23 @@ function splitCommaSeparatedValue(value: string) {
     .filter(Boolean);
 }
 
+function normalizeLanguageLevel(value: string) {
+  return ["native", "fluent", "intermediate", "basic"].includes(value)
+    ? value
+    : "basic";
+}
+
 function mapLanguages(value: string) {
   const languages = splitCommaSeparatedValue(value).map((item) => {
     const [language = "", level = ""] = item.split(":").map((part) => part.trim());
 
     return {
       language,
-      level: level || "basic",
+      level: normalizeLanguageLevel(level),
     };
   });
 
-  return languages.length > 0 ? languages : [{ language: "", level: "" }];
+  return languages;
 }
 
 function resolveProfileLinks(value: string) {
@@ -172,6 +188,19 @@ export function clearRegisterCredentials() {
   window.sessionStorage.removeItem(REGISTER_CREDENTIALS_STORAGE_KEY);
 }
 
+function clearRegisterDraftData() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.removeItem(REGISTER_CREDENTIALS_STORAGE_KEY);
+  window.sessionStorage.removeItem(REGISTER_ACCOUNT_ROLE_STORAGE_KEY);
+
+  for (const storageKey of REGISTER_PROFILE_STORAGE_KEYS) {
+    window.localStorage.removeItem(storageKey);
+  }
+}
+
 export function storeAuthTokens(tokens: AuthTokens) {
   if (typeof window === "undefined") {
     return;
@@ -186,13 +215,36 @@ export function storeAuthTokens(tokens: AuthTokens) {
   }
 }
 
+export function clearAuthSession() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  for (const storageKey of AUTH_TOKEN_STORAGE_KEYS) {
+    window.localStorage.removeItem(storageKey);
+    window.sessionStorage.removeItem(storageKey);
+  }
+}
+
+export function hasAuthSession() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return AUTH_TOKEN_STORAGE_KEYS.some(
+    (storageKey) =>
+      Boolean(window.localStorage.getItem(storageKey)?.trim()) ||
+      Boolean(window.sessionStorage.getItem(storageKey)?.trim()),
+  );
+}
+
 export function buildSeekerSignupPayload(
   credentials: RegisterCredentials,
-  profile: PersonProfileData,
+  profile: PersonProfileData & {
+    profilePicture?: File | null;
+  },
 ): SeekerSignupPayload {
-  const profileLinks = resolveProfileLinks(profile.professionalProfile);
-
-  return {
+  const data: SeekerSignupDataPayload = {
     ...credentials,
     role: "seeker",
     seekerProfile: {
@@ -205,27 +257,33 @@ export function buildSeekerSignupPayload(
       address: profile.address,
       jobLevel: profile.jobLevel,
       yearsOfExperience: toNumber(profile.yearsExperience),
-      lastCompanyName: profile.lastCompany,
       workType: profile.workType,
       lastDegree: profile.latestDegree,
       specialization: profile.specialization,
       university: profile.university,
       graduationYear: toNumber(profile.graduationYear),
       languages: mapLanguages(profile.languages),
-      personalWebsite: profile.portfolioLink,
-      linkedin: profileLinks.linkedin,
-      github: profileLinks.github,
-      behance: "",
-      profileImageUrl: "",
     },
   };
+
+  const formData = new FormData();
+  formData.append("data", JSON.stringify(data));
+
+  if (profile.profilePicture) {
+    formData.append("profilePicture", profile.profilePicture);
+  }
+
+  return formData;
 }
 
 export function buildCompanySignupPayload(
   credentials: RegisterCredentials,
-  profile: CompanyProfileData,
+  profile: CompanyProfileData & {
+    logo?: File | null;
+    licenseImage?: File | null;
+  },
 ): CompanySignupPayload {
-  return {
+  const data: CompanySignupDataPayload = {
     ...credentials,
     role: "company",
     companyProfile: {
@@ -238,12 +296,21 @@ export function buildCompanySignupPayload(
       hrManagerName: profile.hiringManagerName,
       numberOfEmployees: toNumber(profile.employeeCount),
       address: profile.address,
-      website: profile.website,
-      jobTypes: splitCommaSeparatedValue(profile.hiringJobTypes),
-      monthlyJobPostsPlanned: toNumber(profile.monthlyOpenings),
-      companyRecommendations: profile.companyRecommendations,
     },
   };
+
+  const formData = new FormData();
+  formData.append("data", JSON.stringify(data));
+
+  if (profile.logo) {
+    formData.append("logo", profile.logo);
+  }
+
+  if (profile.licenseImage) {
+    formData.append("licenseImage", profile.licenseImage);
+  }
+
+  return formData;
 }
 
 async function login(payload: LoginPayload) {
@@ -271,7 +338,20 @@ async function signup(payload: SignupPayload) {
   );
 
   storeAuthTokens(response.data);
-  clearRegisterCredentials();
+  clearRegisterDraftData();
+  return response.data;
+}
+
+async function logout() {
+  const response = await withApiToast(
+    axiosClient.post<LogoutResponse>("/auth/logout"),
+    {
+      loading: "جاري تسجيل الخروج...",
+      success: "تم تسجيل الخروج بنجاح",
+      error: "فشل تسجيل الخروج",
+    },
+  );
+
   return response.data;
 }
 
@@ -302,6 +382,15 @@ export function useSignup(
 ) {
   return useMutation<SignupResponse, Error, SignupPayload>({
     mutationFn: signup,
+    ...options,
+  });
+}
+
+export function useLogout(
+  options: UseMutationOptions<LogoutResponse, Error, void> = {},
+) {
+  return useMutation<LogoutResponse, Error, void>({
+    mutationFn: logout,
     ...options,
   });
 }

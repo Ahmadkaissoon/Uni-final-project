@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react"
-import { Bell, ChevronDown, Menu, X } from "lucide-react"
+import { Bell, ChevronDown, LogOut, Menu, X } from "lucide-react"
 
 import blueLogo from "../../assets/icons/blue_logo.png"
 // import whiteLogo from "../../assets/icons/white_logo.png";
@@ -46,6 +46,7 @@ interface PortalLayoutProps {
     children: ReactNode
     onPageChange?: (pageId: string) => void
     onProfileClick?: () => void
+    onLogout?: () => void
     profile?: PortalProfile
     className?: string
     contentClassName?: string
@@ -225,6 +226,7 @@ export function PortalLayout({
     children,
     onPageChange,
     onProfileClick,
+    onLogout,
     profile,
     className,
     contentClassName,
@@ -412,7 +414,7 @@ export function PortalLayout({
                             })}
                         </nav>
 
-                        <div className="flex shrink-0 items-center justify-start gap-3 max-[1100px]:order-3 max-[1100px]:w-full max-[1100px]:justify-between max-[640px]:flex-wrap">
+                        <div className="flex shrink-0 items-center justify-start gap-2.5 max-[1100px]:order-3 max-[1100px]:w-full max-[1100px]:justify-between max-[640px]:gap-2">
                             <button
                                 type="button"
                                 className="inline-flex size-[38px] cursor-pointer items-center justify-center rounded-[10px] bg-transparent text-inverse-fg transition duration-200 hover:bg-white/15"
@@ -420,6 +422,19 @@ export function PortalLayout({
                             >
                                 <Bell size={17} />
                             </button>
+
+                            {onLogout ? (
+                                <button
+                                    type="button"
+                                    onClick={onLogout}
+                                    className="inline-flex size-[38px] shrink-0 cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-white/25 bg-white/10 text-size13 font-bold text-inverse-fg transition duration-200 hover:bg-white hover:text-primary sm:w-auto sm:px-3"
+                                    aria-label="تسجيل الخروج"
+                                    title="تسجيل الخروج"
+                                >
+                                    <LogOut size={16} />
+                                    <span className="hidden sm:inline">تسجيل الخروج</span>
+                                </button>
+                            ) : null}
 
                             <span
                                 className="h-[26px] w-px bg-white/30 max-[640px]:hidden"

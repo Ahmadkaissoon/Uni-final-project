@@ -4,11 +4,13 @@ import { Link } from "react-router-dom"
 
 import { cn } from "../../utils/cn"
 import ReusableTable from "../global/table/ReusableTable"
-import { Button } from "../global/ui/button"
+import PortalOpportunityTabs, {
+    type PortalOpportunityTab,
+} from "./PortalOpportunityTabs"
 import { portalInternshipRecords } from "./portalInternshipsData"
 import { portalJobRecords } from "./portalJobsData"
 
-type ApplicationKind = "jobs" | "trainings"
+type ApplicationKind = PortalOpportunityTab
 type ApplicationStatus = "rejected" | "accepted" | "under_review"
 
 interface ApplicationRecord {
@@ -216,31 +218,22 @@ export default function PortalApplicationMonitorSection() {
         <section className="pb-12 pt-10 sm:pb-18 sm:pt-12" dir="rtl">
             <div className="portal-design-shell">
                 <div className="portal-design-inset">
-                    <div className="flex justify-between items-end">
-                        <div className="mb-10 flex justify-start sm:mb-12">
-                            <div className="border-r-[3px] border-warning-color pr-2 text-right">
-                                <h1 className="m-0 py-2.5 text-[28px] font-bold leading-[1.3] text-black max-[400px]:text-[24px] sm:text-[32px]">
-                                    مراقبة الطلب
-                                </h1>
-                                <p className="mt-4 mb-0 text-base font-medium leading-[1.9] text-black min-[500px]:max-w-4/5 min-[500px]:text-lg sm:text-size24">
-                                    يمكنك مراقبة طلب توظيفك أو تدريباتك التي
-                                    أرسلتها للشركات
-                                </p>
-                            </div>
+                    <div className="mb-10 flex flex-col gap-6 lg:mb-12 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="border-r-[3px] border-warning-color pr-2 text-right">
+                            <h1 className="m-0 py-2.5 text-[28px] font-bold leading-[1.3] text-black max-[400px]:text-[24px] sm:text-[32px]">
+                                مراقبة الطلب
+                            </h1>
+                            <p className="mt-4 mb-0 max-w-[36rem] text-size16 font-medium leading-[1.9] text-black sm:text-size20">
+                                يمكنك مراقبة طلب توظيفك أو تدريباتك التي
+                                أرسلتها للشركات
+                            </p>
                         </div>
 
-                        <div className="mb-7 flex flex-wrap justify-end gap-4">
-                            <TogglePill
-                                label="فرص عمل"
-                                active={activeKind === "jobs"}
-                                onClick={() => setActiveKind("jobs")}
-                            />
-                            <TogglePill
-                                label="تدريبات"
-                                active={activeKind === "trainings"}
-                                onClick={() => setActiveKind("trainings")}
-                            />
-                        </div>
+                        <PortalOpportunityTabs
+                            activeTab={activeKind}
+                            onChange={setActiveKind}
+                            className="lg:pt-10"
+                        />
                     </div>
 
                     <ReusableTable
@@ -257,30 +250,5 @@ export default function PortalApplicationMonitorSection() {
                 </div>
             </div>
         </section>
-    )
-}
-
-interface TogglePillProps {
-    label: string
-    active: boolean
-    onClick: () => void
-}
-
-function TogglePill({ label, active, onClick }: TogglePillProps) {
-    return (
-        <Button
-            type="button"
-            variant="panel"
-            size="normal"
-            onClick={onClick}
-            className={cn(
-                "inline-flex w-auto items-center justify-center rounded-full border px-11! py-6! font-bold transition duration-200",
-                active
-                    ? "border-[#3158c7] bg-[#3158c7] text-white shadow-[0_10px_22px_rgb(49_88_199_/_0.20)]"
-                    : "border-[#3158c7] bg-white text-[#3158c7] hover:bg-[#f3f7ff]",
-            )}
-        >
-            {label}
-        </Button>
     )
 }

@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   GraduationCap,
   LayoutDashboard,
+  LogOut,
   Menu,
   Search,
   ShieldCheck,
@@ -22,6 +23,7 @@ interface AdminLayoutProps {
   activePageId: string;
   children: ReactNode;
   onPageChange?: (pageId: string) => void;
+  onLogout?: () => void;
 }
 
 const adminNavIcons = {
@@ -68,6 +70,7 @@ export default function AdminLayout({
   activePageId,
   children,
   onPageChange,
+  onLogout,
 }: AdminLayoutProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -229,6 +232,20 @@ export default function AdminLayout({
                     {unreadNotificationsCount}
                   </span>
               </button>
+
+              {onLogout ? (
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="inline-flex size-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white text-size13 font-bold text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 sm:w-auto sm:px-3"
+                  aria-label="تسجيل الخروج"
+                  title="تسجيل الخروج"
+                >
+                  <LogOut size={17} />
+                  <span className="hidden sm:inline">تسجيل الخروج</span>
+                </button>
+              ) : null}
+
               {notificationsOpen ? (
                 <div className="absolute left-5 top-full z-50 mt-3 w-[min(360px,calc(100vw-40px))] overflow-hidden rounded-lg border border-slate-200 bg-white text-right shadow-[0_24px_70px_rgb(15_23_42_/_0.16)] lg:left-8">
                   <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">

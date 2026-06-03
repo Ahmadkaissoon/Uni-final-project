@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { resolveAuthRedirect, useLogin } from "../../../api";
 import { demoCurrentAdminCredentials } from "../../../api/adminManagers";
@@ -28,6 +28,7 @@ function Login({
   onForgotPassword,
 }: LoginProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const loginMutation = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,6 +36,11 @@ function Login({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isBusy = isLoading || isSubmitting || loginMutation.isPending;
+  const redirectPath = searchParams.get("redirect");
+  const safeRedirectPath =
+    redirectPath?.startsWith("/") && !redirectPath.startsWith("//")
+      ? redirectPath
+      : null;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -65,7 +71,9 @@ function Login({
         email: email.trim(),
         password,
       });
-      navigate(resolveAuthRedirect(response));
+      navigate(safeRedirectPath ?? resolveAuthRedirect(response), {
+        replace: true,
+      });
     } finally {
       setIsSubmitting(false);
     }

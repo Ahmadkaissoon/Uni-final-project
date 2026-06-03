@@ -65,7 +65,7 @@ export const userPortalPages: PortalPageDefinition[] = [
     title: "كافة الوظائف",
     eyebrow: "وظائف المستخدم",
     description:
-      "هذه صفحة عرض كل الوظائف المتاحة للمستخدم، وهي المكان الطبيعي للـ table أو الـ cards الخاصة بقوائم الوظائف.",
+      "هذه صفحة عرض كل الوظائف المتاحة للمستخدم.",
     highlights: [
       "استبدلي هذا المحتوى بقائمة الوظائف الحقيقية.",
       "يمكنك ربطها مع pagination أو filters أو search bar.",

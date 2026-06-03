@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 
+import { clearAuthSession, hasAuthSession, useLogout } from "../api";
 import {
   PortalLayout,
   defaultActivePageByRole,
@@ -24,6 +25,7 @@ export default function PortalRoleLayoutRoute({
 }: PortalRoleLayoutRouteProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const logoutMutation = useLogout();
   const [profile, setProfile] = useState(() =>
     getStoredPortalProfileSummary(role),
   );
@@ -36,6 +38,7 @@ export default function PortalRoleLayoutRoute({
         ? "companies"
         : resolvedPage?.id) ??
     defaultActivePageByRole[role];
+  const redirectPath = `${location.pathname}${location.search}`;
 
   useEffect(() => {
     return subscribeToPortalProfileUpdates((updatedRole) => {
@@ -45,11 +48,30 @@ export default function PortalRoleLayoutRoute({
     });
   }, [role]);
 
+  const handleLogout = async () => {
+    try {
+      await logoutMutation.mutateAsync();
+    } finally {
+      clearAuthSession();
+      navigate("/login", { replace: true });
+    }
+  };
+
+  if (!hasAuthSession()) {
+    return (
+      <Navigate
+        to={`/login?redirect=${encodeURIComponent(redirectPath)}`}
+        replace
+      />
+    );
+  }
+
   return (
     <PortalLayout
       role={role}
       activePageId={activePageId}
       profile={profile}
+      onLogout={handleLogout}
       onProfileClick={() => {
         const nextPath = getPortalPathByPageId(
           role,

@@ -38,13 +38,17 @@ type WizardStepKey =
   | "achievements";
 
 interface PersonWizardProfileData extends PersonProfileData {
+  profilePicture: File | null;
   profileImageName: string;
+  cvFile: File | null;
   cvFileName: string;
 }
 
 const emptyPersonWizardProfileData: PersonWizardProfileData = {
   ...emptyPersonProfileData,
+  profilePicture: null,
   profileImageName: "",
+  cvFile: null,
   cvFileName: "",
 };
 
@@ -88,10 +92,13 @@ const languageOptions = [
 ];
 
 const languageLevelOptions = [
-  { value: "beginner", label: "مبتدئ" },
+  { value: "native", label: "لغة أم" },
+  { value: "fluent", label: "بطلاقة" },
   { value: "intermediate", label: "متوسط" },
-  { value: "advanced", label: "متقدم" },
+  { value: "basic", label: "أساسي" },
 ];
+
+const defaultLanguageLevel = languageLevelOptions[3]?.value ?? "basic";
 
 interface SelectedLanguage {
   language: string;
@@ -108,7 +115,9 @@ function parseSelectedLanguages(value: string): SelectedLanguage[] {
 
       return {
         language,
-        level: level || "beginner",
+        level: languageLevelOptions.some((option) => option.value === level)
+          ? level
+          : defaultLanguageLevel,
       };
     })
     .filter((item) => item.language);
@@ -116,7 +125,7 @@ function parseSelectedLanguages(value: string): SelectedLanguage[] {
 
 function serializeSelectedLanguages(languages: SelectedLanguage[]) {
   return languages
-    .map((item) => `${item.language}:${item.level || "beginner"}`)
+    .map((item) => `${item.language}:${item.level || defaultLanguageLevel}`)
     .join(", ");
 }
 
@@ -161,7 +170,7 @@ function PersonProfileWizard() {
   const [submissionError, setSubmissionError] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState("");
   const [selectedLanguageLevel, setSelectedLanguageLevel] = useState(
-    languageLevelOptions[0]?.value ?? "beginner",
+    defaultLanguageLevel,
   );
   const signupMutation = useSignup();
   const [formData, setFormData] = useState<PersonWizardProfileData>(() =>
@@ -221,7 +230,7 @@ function PersonProfileWizard() {
       },
     ]);
     setSelectedLanguage("");
-    setSelectedLanguageLevel(languageLevelOptions[0]?.value ?? "beginner");
+    setSelectedLanguageLevel(defaultLanguageLevel);
   };
 
   const handleLanguageLevelChange = (language: string, level: string) => {
@@ -241,8 +250,12 @@ function PersonProfileWizard() {
   const handleFileSelection =
     (field: "profileImageName" | "cvFileName") =>
     (event: ChangeEvent<HTMLInputElement>) => {
-      const selectedFile = event.target.files?.[0];
+      const selectedFile = event.target.files?.[0] ?? null;
       updateField(field, selectedFile?.name ?? "");
+      updateField(
+        field === "profileImageName" ? "profilePicture" : "cvFile",
+        selectedFile,
+      );
 
       if (field !== "profileImageName" || !selectedFile) {
         return;
@@ -262,9 +275,35 @@ function PersonProfileWizard() {
     };
 
   useEffect(() => {
-    writeStoredProfile<PersonWizardProfileData>(
+    writeStoredProfile<PersonProfileData & {
+      profileImageName: string;
+      cvFileName: string;
+    }>(
       personProfileEditorConfig.storageKey,
-      formData,
+      {
+        fullName: formData.fullName,
+        gender: formData.gender,
+        birthDate: formData.birthDate,
+        phone: formData.phone,
+        country: formData.country,
+        city: formData.city,
+        address: formData.address,
+        jobLevel: formData.jobLevel,
+        yearsExperience: formData.yearsExperience,
+        lastCompany: formData.lastCompany,
+        workType: formData.workType,
+        latestDegree: formData.latestDegree,
+        specialization: formData.specialization,
+        university: formData.university,
+        graduationYear: formData.graduationYear,
+        languages: formData.languages,
+        topAchievement: formData.topAchievement,
+        portfolioLink: formData.portfolioLink,
+        professionalProfile: formData.professionalProfile,
+        projectSummary: formData.projectSummary,
+        profileImageName: formData.profileImageName,
+        cvFileName: formData.cvFileName,
+      },
     );
     notifyPortalProfileUpdate("user");
   }, [formData]);
@@ -289,9 +328,34 @@ function PersonProfileWizard() {
 
     setSubmissionError("");
 
+    const submissionLanguages = selectedLanguage
+      ? [
+          ...selectedLanguages,
+          {
+            language: selectedLanguage,
+            level: selectedLanguageLevel,
+          },
+        ]
+      : selectedLanguages;
+
+    if (submissionLanguages.length === 0) {
+      setSubmissionError("يرجى اختيار لغة واحدة على الأقل قبل إنشاء الحساب.");
+      return;
+    }
+
+    if (!formData.profilePicture) {
+      setSubmissionError("يرجى اختيار صورة شخصية قبل إنشاء الحساب.");
+      return;
+    }
+
+    const submissionData = {
+      ...formData,
+      languages: serializeSelectedLanguages(submissionLanguages),
+    };
+
     try {
       await signupMutation.mutateAsync(
-        buildSeekerSignupPayload(credentials, formData),
+        buildSeekerSignupPayload(credentials, submissionData),
       );
       setIsCompleted(true);
       navigate("/");
