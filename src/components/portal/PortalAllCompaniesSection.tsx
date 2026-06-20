@@ -1,18 +1,30 @@
-import { MapPin, Plus, SendHorizontal, Tag } from "lucide-react"
-import { useState } from "react"
+import {
+    Globe,
+    Mail,
+    MapPin,
+    Phone,
+    Plus,
+    SendHorizontal,
+    Tag,
+} from "lucide-react"
+import { useMemo, useState, type ReactNode } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 
+import {
+    getPortalCompanyMatchKeys,
+    getPortalCompanyPrimaryMatchKey,
+    usePortalCompanies,
+} from "../../api/portalCompanies"
+import { usePortalJobs } from "../../api/portalJobs"
+import { usePortalTrainings } from "../../api/portalTrainings"
 import { Button } from "../global/ui/button"
 import PortalCompanyLogoSlide from "./PortalCompanyLogoSlide"
+import PortalCompanyLogoSlideSkeleton from "./PortalCompanyLogoSlideSkeleton"
 import {
+    buildPortalCompanyJobsPath,
     normalizePortalCompanyValue,
-    portalCompanyDirectoryItems,
     type PortalCompanyDirectoryItem,
 } from "./portalCompaniesData"
-import {
-    portalInternshipRecords,
-    type PortalInternshipRecord,
-} from "./portalInternshipsData"
-import { portalJobRecords, type PortalJobRecord } from "./portalJobsData"
 
 interface PortalAllCompaniesSectionProps {
     title?: string
@@ -24,32 +36,59 @@ interface PortalAllCompaniesSectionProps {
 export default function PortalAllCompaniesSection({
     title = "كافة الشركات",
     description = "يمكنك هنا إيجاد جميع الشركات المسجلة في منصتنا.",
-    companies = portalCompanyDirectoryItems,
+    companies,
     itemsPerPage = 6,
 }: PortalAllCompaniesSectionProps) {
     const [visiblePages, setVisiblePages] = useState(1)
-    const [selectedCompany, setSelectedCompany] =
-        useState<PortalCompanyDirectoryItem | null>(null)
+    const [searchParams, setSearchParams] = useSearchParams()
+    const companiesQuery = usePortalCompanies()
+    const resolvedCompanies = companies ?? companiesQuery.companies
+    const isLoading = companies === undefined && companiesQuery.isLoading
+    const isError = companies === undefined && companiesQuery.isError
+    const selectedCompanyId = searchParams.get("company")
 
-    function handleSelectCompany(company: PortalCompanyDirectoryItem) {
-        setSelectedCompany(company)
+    const selectedCompany = useMemo(
+        () =>
+            selectedCompanyId
+                ? resolvedCompanies.find((company) => company.id === selectedCompanyId) ??
+                  null
+                : null,
+        [resolvedCompanies, selectedCompanyId],
+    )
+
+    function scrollToTop() {
         window.requestAnimationFrame(() => {
             window.scrollTo({ top: 0, behavior: "smooth" })
         })
     }
 
-    const visibleCount = Math.min(companies.length, visiblePages * itemsPerPage)
-    const visibleCompanies = companies.slice(0, visibleCount)
-    const canShowMore = visibleCount < companies.length
+    function handleSelectCompany(company: PortalCompanyDirectoryItem) {
+        const nextSearchParams = new URLSearchParams(searchParams)
+        nextSearchParams.set("company", company.id)
+        setSearchParams(nextSearchParams)
+        scrollToTop()
+    }
+
+    function handleClearSelectedCompany() {
+        const nextSearchParams = new URLSearchParams(searchParams)
+        nextSearchParams.delete("company")
+        setSearchParams(nextSearchParams)
+        scrollToTop()
+    }
+
+    const visibleCount = Math.min(resolvedCompanies.length, visiblePages * itemsPerPage)
+    const visibleCompanies = resolvedCompanies.slice(0, visibleCount)
+    const canShowMore = visibleCount < resolvedCompanies.length
 
     if (selectedCompany) {
         return (
             <PortalCompanyDetailsView
                 company={selectedCompany}
-                companies={companies}
+                companies={resolvedCompanies}
                 title={title}
                 description={description}
                 onSelectCompany={handleSelectCompany}
+                onBack={handleClearSelectedCompany}
             />
         )
     }
@@ -69,44 +108,68 @@ export default function PortalAllCompaniesSection({
                         </div>
                     </div>
 
-                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8 xl:px-[89px]">
-                        {visibleCompanies.map((company) => (
-                            <PortalCompanyLogoSlide
-                                key={company.id}
-                                companyName={company.companyName}
-                                logoSrc={company.logoSrc}
-                                logoAlt={company.logoAlt}
-                                logoLabel={company.logoLabel}
-                                onClick={() => handleSelectCompany(company)}
-                                showCompanyName
-                                className="portal-category-card-shadow min-h-[214px] !rounded-[20px] !border-black/0 !bg-white !px-6 !py-10"
-                            />
-                        ))}
-                    </div>
-
-                    {canShowMore ? (
-                        <div className="mt-8 flex justify-center sm:mt-10">
-                            <Button
-                                type="button"
-                                variant="panel"
-                                size="normal"
-                                onClick={() =>
-                                    setVisiblePages(
-                                        (currentPage) => currentPage + 1,
-                                    )
-                                }
-                                className="inline-flex items-center rounded-[8px] border border-warning-color bg-warning-color !px-4 !py-2 !text-size18 !font-bold !text-white hover:!brightness-105"
-                                dir="rtl"
-                            >
-                                <span className="ml-3 inline-flex items-center justify-center rounded-full border-2 border-white p-1">
-                                    <Plus className="size-5" />
-                                </span>
-                                <span className="inline-flex items-center">
-                                    عرض المزيد
-                                </span>
-                            </Button>
+                    {isError ? (
+                        <div className="portal-category-card-shadow rounded-[20px] bg-white px-6 py-12 text-center">
+                            <p className="m-0 text-size18 font-bold text-black">
+                                تعذر تحميل الشركات حالياً، يرجى المحاولة لاحقاً.
+                            </p>
                         </div>
-                    ) : null}
+                    ) : (
+                        <>
+                            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8 xl:px-[89px]">
+                                {isLoading
+                                    ? Array.from({ length: itemsPerPage }).map((_, index) => (
+                                          <PortalCompanyLogoSlideSkeleton
+                                              key={`company-grid-skeleton-${index + 1}`}
+                                              showCompanyName
+                                              className="portal-category-card-shadow min-h-[214px] !rounded-[20px] !border-black/0 !bg-white !px-6 !py-10"
+                                          />
+                                      ))
+                                    : visibleCompanies.length > 0
+                                      ? visibleCompanies.map((company) => (
+                                            <PortalCompanyLogoSlide
+                                                key={company.id}
+                                                companyName={company.companyName}
+                                                logoSrc={company.logoSrc}
+                                                logoAlt={company.logoAlt}
+                                                logoLabel={company.logoLabel}
+                                                onClick={() => handleSelectCompany(company)}
+                                                showCompanyName
+                                                className="portal-category-card-shadow min-h-[214px] !rounded-[20px] !border-black/0 !bg-white !px-6 !py-10"
+                                            />
+                                        ))
+                                      : (
+                                          <div className="portal-category-card-shadow col-span-full rounded-[20px] bg-white px-6 py-12 text-center">
+                                              <p className="m-0 text-size18 font-bold text-black">
+                                                  لا توجد شركات متاحة حالياً.
+                                              </p>
+                                          </div>
+                                      )}
+                            </div>
+
+                            {canShowMore ? (
+                                <div className="mt-8 flex justify-center sm:mt-10">
+                                    <Button
+                                        type="button"
+                                        variant="panel"
+                                        size="normal"
+                                        onClick={() =>
+                                            setVisiblePages((currentPage) => currentPage + 1)
+                                        }
+                                        className="inline-flex items-center rounded-[8px] border border-warning-color bg-warning-color !px-4 !py-2 !text-size18 !font-bold !text-white hover:!brightness-105"
+                                        dir="rtl"
+                                    >
+                                        <span className="ml-3 inline-flex items-center justify-center rounded-full border-2 border-white p-1">
+                                            <Plus className="size-5" />
+                                        </span>
+                                        <span className="inline-flex items-center">
+                                            عرض المزيد
+                                        </span>
+                                    </Button>
+                                </div>
+                            ) : null}
+                        </>
+                    )}
                 </div>
             </div>
         </section>
@@ -119,6 +182,7 @@ export interface PortalCompanyDetailsViewProps {
     title: string
     description: string
     onSelectCompany: (company: PortalCompanyDirectoryItem) => void
+    onBack?: () => void
 }
 
 export function PortalCompanyDetailsView({
@@ -127,15 +191,40 @@ export function PortalCompanyDetailsView({
     title,
     description,
     onSelectCompany,
+    onBack,
 }: PortalCompanyDetailsViewProps) {
-    const companyJobs = getCompanyJobs(company)
-    const companyInternships = getCompanyInternships(company)
-    const primaryJob = companyJobs[0]
-    const primaryInternship = companyInternships[0]
-    const primaryImage = primaryJob ?? primaryInternship
-    const similarCompanies = companies
-        .filter((currentCompany) => currentCompany.id !== company.id)
-        .slice(0, 3)
+    const navigate = useNavigate()
+    const jobsQuery = usePortalJobs()
+    const trainingsQuery = usePortalTrainings()
+    const companyJobs = useMemo(
+        () =>
+            jobsQuery.jobs.filter((job) =>
+                matchesCompanyIdentity(company, job.companyName, job.companyWebsite),
+            ),
+        [company, jobsQuery.jobs],
+    )
+    const companyTrainings = useMemo(
+        () =>
+            trainingsQuery.trainings.filter((training) =>
+                matchesCompanyIdentity(company, training.companyName),
+            ),
+        [company, trainingsQuery.trainings],
+    )
+    const primaryMatchKey = getPortalCompanyPrimaryMatchKey(company)
+    const opportunitiesAreLoading =
+        jobsQuery.isLoading || trainingsQuery.isLoading
+    const similarCompanies = useMemo(
+        () =>
+            companies
+                .filter((currentCompany) => currentCompany.id !== company.id)
+                .sort((firstCompany, secondCompany) => {
+                    const firstScore = getSimilarCompanyScore(company, firstCompany)
+                    const secondScore = getSimilarCompanyScore(company, secondCompany)
+                    return secondScore - firstScore
+                })
+                .slice(0, 3),
+        [companies, company],
+    )
 
     return (
         <section className="pb-12 pt-10 sm:pb-18 sm:pt-12" dir="rtl">
@@ -152,14 +241,28 @@ export function PortalCompanyDetailsView({
                                 </p>
                             </div>
                         </div>
+
+                        {onBack ? (
+                            <div className="mt-6 flex justify-start">
+                                <Button
+                                    type="button"
+                                    variant="panel"
+                                    size="normal"
+                                    onClick={onBack}
+                                    className="rounded-[8px] border border-warning-color bg-white !px-4 !py-2 !text-size16 !font-bold !text-warning-color hover:!bg-warning-color hover:!text-white"
+                                >
+                                    عرض كافة الشركات
+                                </Button>
+                            </div>
+                        ) : null}
                     </div>
 
                     <div className="mb-12 grid items-center gap-8 lg:grid-cols-[minmax(360px,1.35fr)_minmax(280px,0.9fr)] lg:gap-14">
                         <div className="order-1 overflow-hidden rounded-[14px] bg-[#eef2f6]">
-                            {primaryImage?.imageSrc ? (
+                            {company.logoSrc ? (
                                 <img
-                                    src={primaryImage.imageSrc}
-                                    alt={primaryImage.imageAlt}
+                                    src={company.logoSrc}
+                                    alt={company.logoAlt ?? company.companyName}
                                     className="h-[250px] w-full object-cover sm:h-[300px]"
                                 />
                             ) : (
@@ -177,24 +280,39 @@ export function PortalCompanyDetailsView({
                             </h2>
 
                             <CompanyContactLine
-                                value={formatCompanyLocation(
-                                    primaryJob,
-                                    primaryInternship,
-                                )}
+                                icon={<MapPin className="size-6 text-warning-color" />}
+                                value={formatCompanyLocation(company)}
                             />
                             <CompanyContactLine
+                                icon={<Globe className="size-6 text-warning-color" />}
                                 value={formatCompanyWebsite(company)}
                             />
+                            <CompanyContactLine
+                                icon={<Mail className="size-6 text-warning-color" />}
+                                value={formatTextValue(company.companyEmail)}
+                            />
 
-                            <Button
-                                type="button"
-                                variant="panel"
-                                size="normal"
-                                className="mt-5 inline-flex items-center gap-3 rounded-[8px] border border-accept-color bg-accept-color !px-4 !py-2.5 !text-size16 !font-bold !text-white hover:!brightness-105"
-                            >
-                                متابعة
-                                <SendHorizontal className="size-5" />
-                            </Button>
+                            <div className="mt-5 flex flex-col items-center gap-3 min-[520px]:flex-row">
+                                <Button
+                                    type="button"
+                                    variant="panel"
+                                    size="normal"
+                                    onClick={() =>
+                                        navigate(buildPortalCompanyJobsPath(primaryMatchKey))
+                                    }
+                                    className="inline-flex items-center gap-3 rounded-[8px] border border-accept-color bg-accept-color !px-4 !py-2.5 !text-size16 !font-bold !text-white hover:!brightness-105"
+                                >
+                                    عرض الوظائف
+                                    <SendHorizontal className="size-5" />
+                                </Button>
+
+                                {company.companyPhone ? (
+                                    <div className="inline-flex items-center gap-2 text-sm font-medium text-black min-[520px]:text-size16">
+                                        <Phone className="size-5 shrink-0 text-warning-color" />
+                                        <span>{company.companyPhone}</span>
+                                    </div>
+                                ) : null}
+                            </div>
                         </div>
                     </div>
 
@@ -202,29 +320,13 @@ export function PortalCompanyDetailsView({
                         <CompanyInfoColumn
                             title="المعلومات العامة"
                             items={[
-                                [
-                                    "العنوان",
-                                    getCompanySpecialization(
-                                        primaryJob,
-                                        primaryInternship,
-                                    ),
-                                ],
-                                [
-                                    "القطاع",
-                                    primaryJob?.category ??
-                                        primaryInternship?.trainingType ??
-                                        "غير محدد",
-                                ],
+                                ["العنوان", formatCompanyAddress(company)],
+                                ["القطاع", formatCompanySector(company.sector)],
                                 [
                                     "عدد الموظفين",
-                                    `${Math.max(
-                                        (companyJobs.length +
-                                            companyInternships.length) *
-                                            8,
-                                        12,
-                                    )} موظف تقريبًا`,
+                                    formatCompanyEmployees(company.numberOfEmployees),
                                 ],
-                                ["رقم هاتف", "غير محدد"],
+                                ["هاتف الشركة", formatTextValue(company.companyPhone)],
                             ]}
                         />
 
@@ -232,8 +334,16 @@ export function PortalCompanyDetailsView({
                             title="معلومات المسؤول"
                             items={[
                                 [
-                                    "اسم مسؤول التوظيف",
-                                    getHiringManagerName(primaryJob),
+                                    "اسم مسؤول الموارد البشرية",
+                                    formatTextValue(company.hrManagerName),
+                                ],
+                                [
+                                    "البريد الإلكتروني",
+                                    formatTextValue(company.companyEmail),
+                                ],
+                                [
+                                    "الموقع الإلكتروني",
+                                    formatCompanyWebsite(company),
                                 ],
                             ]}
                         />
@@ -242,21 +352,26 @@ export function PortalCompanyDetailsView({
                             title="الأقسام والاحتياجات"
                             items={[
                                 [
-                                    "نوع الوظائف التي نوظف لها",
-                                    getCompanyOpportunityTitles(
+                                    "أنواع الفرص المطلوبة",
+                                    formatCompanyJobTypes(company.jobTypes),
+                                ],
+                                [
+                                    "عدد الفرص الحالية",
+                                    opportunitiesAreLoading
+                                        ? "جاري تحميل الفرص..."
+                                        : `${companyJobs.length} وظيفة | ${companyTrainings.length} تدريب`,
+                                ],
+                                [
+                                    "الفرص المخطط نشرها شهرياً",
+                                    formatMonthlyPosts(company.monthlyJobPostsPlanned),
+                                ],
+                                [
+                                    "توصيات الشركة",
+                                    formatCompanyRecommendations(
+                                        company.companyRecommendations,
                                         companyJobs,
-                                        companyInternships,
+                                        companyTrainings,
                                     ),
-                                ],
-                                [
-                                    "عدد الوظائف التي طرحناها",
-                                    `${companyJobs.length} وظيفة | ${companyInternships.length} تدريب`,
-                                ],
-                                [
-                                    "وصف الشركة",
-                                    primaryJob?.companyLegalName ??
-                                        primaryInternship?.companyLegalName ??
-                                        company.companyName,
                                 ],
                             ]}
                         />
@@ -319,88 +434,193 @@ function CompanyInfoColumn({ title, items }: CompanyInfoColumnProps) {
     )
 }
 
-function CompanyContactLine({ value }: { value: string }) {
+function CompanyContactLine({
+    icon,
+    value,
+}: {
+    icon: ReactNode
+    value: string
+}) {
     return (
         <div className="mb-4 flex items-center justify-center gap-3 text-size16 font-medium text-black">
-            <MapPin className="size-6 text-warning-color" />
+            {icon}
             <span>{value}</span>
         </div>
     )
 }
 
-function getCompanyJobs(company: PortalCompanyDirectoryItem) {
-    return portalJobRecords.filter((job) => {
-        const normalizedCompanyWebsite = normalizePortalCompanyValue(
-            job.companyWebsite,
-        )
-        const normalizedCompanyName = normalizePortalCompanyValue(job.companyName)
-
-        return (
-            normalizedCompanyWebsite === company.id ||
-            normalizedCompanyName === company.id
-        )
-    })
-}
-
-function getCompanyInternships(company: PortalCompanyDirectoryItem) {
-    return portalInternshipRecords.filter((internship) => {
-        const normalizedCompanyWebsite = normalizePortalCompanyValue(
-            internship.companyWebsite,
-        )
-        const normalizedCompanyName = normalizePortalCompanyValue(
-            internship.companyName,
-        )
-
-        return (
-            normalizedCompanyWebsite === company.id ||
-            normalizedCompanyName === company.id
-        )
-    })
-}
-
-function getCompanySpecialization(
-    job?: PortalJobRecord,
-    internship?: PortalInternshipRecord,
+function matchesCompanyIdentity(
+    company: PortalCompanyDirectoryItem,
+    companyName?: string,
+    companyWebsite?: string,
 ) {
-    return (
-        job?.detailColumns
-            .flat()
-            .find((entry) => entry.id === "specialization")?.value ??
-        job?.category ??
-        internship?.trainingType ??
-        "غير محدد"
-    )
+    const companyMatchKeys = getPortalCompanyMatchKeys(company)
+    const comparedValues = [companyName, companyWebsite]
+        .map((value) => normalizePortalCompanyValue(value))
+        .filter(Boolean)
+
+    return comparedValues.some((value) => companyMatchKeys.includes(value))
 }
 
-function getCompanyOpportunityTitles(
-    jobs: PortalJobRecord[],
-    internships: PortalInternshipRecord[],
+function getSimilarCompanyScore(
+    baseCompany: PortalCompanyDirectoryItem,
+    candidateCompany: PortalCompanyDirectoryItem,
 ) {
-    const jobTitles = Array.from(
-        new Set([
-            ...jobs.map((job) => job.jobTitle),
-            ...internships.map((internship) => internship.trainingType),
-        ]),
-    )
+    let score = 0
 
-    return jobTitles.length ? jobTitles.join(" | ") : "غير محدد"
+    if (baseCompany.sector && baseCompany.sector === candidateCompany.sector) {
+        score += 3
+    }
+
+    if (baseCompany.country && baseCompany.country === candidateCompany.country) {
+        score += 2
+    }
+
+    if (baseCompany.city && baseCompany.city === candidateCompany.city) {
+        score += 1
+    }
+
+    return score
 }
 
-function getHiringManagerName(job?: PortalJobRecord) {
-    return job ? `مسؤول توظيف ${job.companyName}` : "مسؤول التوظيف"
-}
-
-function formatCompanyLocation(
-    job?: PortalJobRecord,
-    internship?: PortalInternshipRecord,
-) {
-    return job ? `${job.location} - سوريا` : (internship?.location ?? "سوريا")
+function formatTextValue(value?: string | null, fallback = "غير محدد") {
+    const normalizedValue = `${value ?? ""}`.trim()
+    return normalizedValue || fallback
 }
 
 function formatCompanyWebsite(company: PortalCompanyDirectoryItem) {
-    const normalizedWebsite = company.companyWebsite.toLowerCase()
+    const rawWebsite = formatTextValue(company.companyWebsite, "")
 
-    return normalizedWebsite.startsWith("www.")
-        ? normalizedWebsite
-        : `www.${normalizedWebsite}`
+    if (!rawWebsite) {
+        return "غير محدد"
+    }
+
+    return rawWebsite.replace(/^https?:\/\//i, "").replace(/\/$/, "")
+}
+
+function formatCompanyLocation(company: PortalCompanyDirectoryItem) {
+    const locationParts = [
+        formatTextValue(company.city, ""),
+        formatCountryName(company.country),
+    ].filter(Boolean)
+
+    return locationParts.length > 0 ? locationParts.join(" - ") : "غير محدد"
+}
+
+function formatCompanyAddress(company: PortalCompanyDirectoryItem) {
+    const addressParts = [
+        formatTextValue(company.address, ""),
+        formatTextValue(company.city, ""),
+        formatCountryName(company.country),
+    ].filter(Boolean)
+
+    return addressParts.length > 0 ? addressParts.join(" - ") : "غير محدد"
+}
+
+function formatCountryName(countryCode?: string) {
+    const normalizedCode = `${countryCode ?? ""}`.trim().toUpperCase()
+
+    switch (normalizedCode) {
+        case "SA":
+            return "السعودية"
+        case "SY":
+            return "سوريا"
+        case "AE":
+            return "الإمارات"
+        case "EG":
+            return "مصر"
+        case "JO":
+            return "الأردن"
+        case "QA":
+            return "قطر"
+        case "KW":
+            return "الكويت"
+        case "BH":
+            return "البحرين"
+        case "OM":
+            return "عُمان"
+        default:
+            return formatTextValue(countryCode, "")
+    }
+}
+
+function formatCompanySector(sector?: string) {
+    const normalizedSector = `${sector ?? ""}`.trim().toLowerCase()
+
+    switch (normalizedSector) {
+        case "technology":
+            return "التكنولوجيا"
+        case "marketing":
+            return "التسويق"
+        case "education":
+            return "التعليم"
+        case "healthcare":
+            return "الرعاية الصحية"
+        case "finance":
+            return "التمويل"
+        default:
+            return formatTextValue(sector)
+    }
+}
+
+function formatCompanyEmployees(numberOfEmployees?: number) {
+    return typeof numberOfEmployees === "number"
+        ? `${numberOfEmployees} موظف`
+        : "غير محدد"
+}
+
+function formatCompanyJobTypes(jobTypes?: string[]) {
+    if (!jobTypes?.length) {
+        return "غير محدد"
+    }
+
+    return jobTypes.map(formatJobTypeLabel).join(" | ")
+}
+
+function formatJobTypeLabel(jobType: string) {
+    switch (`${jobType}`.trim().toLowerCase()) {
+        case "full-time":
+            return "دوام كامل"
+        case "part-time":
+            return "دوام جزئي"
+        case "remote":
+            return "عن بعد"
+        case "hybrid":
+            return "هجين"
+        case "onsite":
+            return "ضمن الشركة"
+        case "internship":
+            return "تدريب"
+        default:
+            return formatTextValue(jobType)
+    }
+}
+
+function formatMonthlyPosts(monthlyJobPostsPlanned?: number) {
+    return typeof monthlyJobPostsPlanned === "number"
+        ? `${monthlyJobPostsPlanned} فرصة شهرياً`
+        : "غير محدد"
+}
+
+function formatCompanyRecommendations(
+    recommendations?: string,
+    companyJobs: { jobTitle: string }[] = [],
+    companyTrainings: { trainingType: string }[] = [],
+) {
+    const normalizedRecommendations = `${recommendations ?? ""}`.trim()
+
+    if (normalizedRecommendations) {
+        return normalizedRecommendations
+    }
+
+    const opportunityTitles = Array.from(
+        new Set([
+            ...companyJobs.map((job) => job.jobTitle),
+            ...companyTrainings.map((training) => training.trainingType),
+        ]),
+    )
+
+    return opportunityTitles.length > 0
+        ? opportunityTitles.join(" | ")
+        : "غير محدد"
 }

@@ -22,6 +22,7 @@ interface ApiJob {
     jobLevel?: string
     requiredEducation?: string
     jobType?: string
+    workType?: string
     workDays?: string
     workHours?: string
     experienceYears?: number
@@ -29,10 +30,13 @@ interface ApiJob {
     minSalary?: number
     maxSalary?: number
     resumeLanguage?: string
+    languagelevel?: string
     description?: string
     responsibilities?: string
     skills?: string
     requirements?: string
+    status?: string
+    applicationsCount?: number
     company?: ApiJobCompany | null
     companyId?: string
 }
@@ -41,6 +45,7 @@ interface ApiJobListResponse {
     data?: ApiJob[]
     total?: number
 }
+
 interface ApiJobCategoryListResponse {
     data?: ApiJobCategory[]
     total?: number
@@ -81,12 +86,147 @@ function formatValue(value: unknown, fallback = "غير محدد") {
     return text || fallback
 }
 
+function formatSentenceValue(value: unknown, fallback = "غير محدد") {
+    const text = formatValue(value, fallback)
+
+    if (text === fallback) {
+        return fallback
+    }
+
+    return text.replace(/_/g, " ")
+}
+
 function formatSalary(value: unknown) {
     if (value === null || value === undefined || value === "") {
         return "غير محدد"
     }
 
     return `${value} شهرياً`
+}
+
+function formatJobLevel(value?: string) {
+    switch (`${value ?? ""}`.trim().toLowerCase()) {
+        case "junior":
+            return "مبتدئ"
+        case "mid":
+        case "mid-level":
+        case "middle":
+            return "متوسط"
+        case "senior":
+            return "كبير"
+        case "lead":
+            return "قائد فريق"
+        case "manager":
+            return "مدير"
+        default:
+            return formatSentenceValue(value)
+    }
+}
+
+function formatEducationLevel(value?: string) {
+    switch (`${value ?? ""}`.trim().toLowerCase()) {
+        case "bachelor":
+            return "بكالوريوس"
+        case "master":
+            return "ماجستير"
+        case "phd":
+            return "دكتوراه"
+        case "diploma":
+            return "دبلوم"
+        case "high_school":
+        case "high-school":
+            return "ثانوية"
+        default:
+            return formatSentenceValue(value)
+    }
+}
+
+function formatJobType(value?: string) {
+    switch (`${value ?? ""}`.trim().toLowerCase()) {
+        case "full_time":
+        case "full-time":
+            return "دوام كامل"
+        case "part_time":
+        case "part-time":
+            return "دوام جزئي"
+        case "contract":
+            return "عقد"
+        case "freelance":
+            return "عمل حر"
+        case "temporary":
+            return "مؤقت"
+        case "internship":
+            return "تدريب"
+        default:
+            return formatSentenceValue(value)
+    }
+}
+
+function formatWorkType(value?: string) {
+    switch (`${value ?? ""}`.trim().toLowerCase()) {
+        case "remote":
+        case "remotely":
+            return "عن بعد"
+        case "hybrid":
+        case "hybridly":
+            return "هجين"
+        case "onsite":
+        case "on_site":
+        case "on-site":
+            return "ضمن الشركة"
+        default:
+            return formatSentenceValue(value)
+    }
+}
+
+function formatLanguageLevel(value?: string) {
+    switch (`${value ?? ""}`.trim().toUpperCase()) {
+        case "A1":
+            return "A1 - مبتدئ"
+        case "A2":
+            return "A2 - أساسي"
+        case "B1":
+            return "B1 - متوسط"
+        case "B2":
+            return "B2 - فوق المتوسط"
+        case "C1":
+            return "C1 - متقدم"
+        case "C2":
+            return "C2 - احترافي"
+        default:
+            return formatSentenceValue(value)
+    }
+}
+
+function formatResumeLanguage(value?: string) {
+    switch (`${value ?? ""}`.trim().toLowerCase()) {
+        case "arabic":
+            return "العربية"
+        case "english":
+            return "الإنجليزية"
+        case "french":
+            return "الفرنسية"
+        default:
+            return formatSentenceValue(value)
+    }
+}
+
+function formatWorkDays(value?: string) {
+    const normalizedValue = `${value ?? ""}`.trim()
+
+    if (!normalizedValue) {
+        return "غير محدد"
+    }
+
+    return normalizedValue
+        .replace(/Saturday/gi, "السبت")
+        .replace(/Sunday/gi, "الأحد")
+        .replace(/Monday/gi, "الاثنين")
+        .replace(/Tuesday/gi, "الثلاثاء")
+        .replace(/Wednesday/gi, "الأربعاء")
+        .replace(/Thursday/gi, "الخميس")
+        .replace(/Friday/gi, "الجمعة")
+        .replace(/\s+to\s+/gi, " إلى ")
 }
 
 function createDetailEntry(
@@ -104,30 +244,55 @@ function createDetailEntry(
 function createApiJobDetailColumns(job: ApiJob): PortalJobDetailEntry[][] {
     return [
         [
-            createDetailEntry("specialization", "التخصص", job.specialization),
-            createDetailEntry("work-type", "نوع العمل", job.jobType),
-            createDetailEntry("working-hours", "ساعات العمل", job.workHours),
+            createDetailEntry(
+                "specialization",
+                "التخصص",
+                job.specialization ?? job.categoryName ?? job.category,
+            ),
+            createDetailEntry(
+                "english-level",
+                "مستوى اللغة الإنجليزية",
+                formatLanguageLevel(job.languagelevel),
+            ),
+            createDetailEntry("work-type", "نوع العمل", formatJobType(job.jobType)),
+            createDetailEntry(
+                "working-hours",
+                "ساعات العمل",
+                formatSentenceValue(job.workHours),
+            ),
             createDetailEntry(
                 "experience",
                 "سنوات الخبرة",
                 job.experienceYears,
             ),
-            createDetailEntry("job-mode", "نوع الوظيفة", job.jobType),
+            createDetailEntry(
+                "job-mode",
+                "نوع الوظيفة",
+                formatWorkType(job.workType),
+            ),
         ],
         [
             createDetailEntry(
                 "education-level",
                 "المستوى التعليمي المطلوب",
-                job.requiredEducation,
+                formatEducationLevel(job.requiredEducation),
             ),
-            createDetailEntry("seniority", "المستوى الوظيفي", job.jobLevel),
-            createDetailEntry("working-days", "أيام العمل", job.workDays),
+            createDetailEntry(
+                "seniority",
+                "المستوى الوظيفي",
+                formatJobLevel(job.jobLevel),
+            ),
+            createDetailEntry(
+                "working-days",
+                "أيام العمل",
+                formatWorkDays(job.workDays),
+            ),
             createDetailEntry(
                 "cv-language",
                 "لغة السيرة الذاتية",
-                job.resumeLanguage,
+                formatResumeLanguage(job.resumeLanguage),
             ),
-            createDetailEntry("location", "المكان", job.location),
+            createDetailEntry("location", "المكان", formatSentenceValue(job.location)),
             {
                 id: "min-salary",
                 label: "الحد الأدنى للراتب",
@@ -143,22 +308,22 @@ function createApiJobDetailColumns(job: ApiJob): PortalJobDetailEntry[][] {
             createDetailEntry(
                 "job-summary",
                 "ملخص الوظيفة والغرض منها",
-                job.description,
+                formatSentenceValue(job.description),
             ),
             createDetailEntry(
                 "responsibilities",
                 "المسؤوليات والواجبات",
-                job.responsibilities,
+                formatSentenceValue(job.responsibilities),
             ),
             createDetailEntry(
                 "qualifications",
                 "المؤهلات والمهارات",
-                job.skills,
+                formatSentenceValue(job.skills),
             ),
             createDetailEntry(
                 "requirements",
                 "شروط ومتطلبات الوظيفة",
-                job.requirements,
+                formatSentenceValue(job.requirements),
             ),
         ],
     ]
@@ -166,29 +331,6 @@ function createApiJobDetailColumns(job: ApiJob): PortalJobDetailEntry[][] {
 
 function getCompanyName(job: ApiJob) {
     return formatValue(job.company?.name, "شركة غير محددة")
-}
-
-export function mapApiJobToPortalJobRecord(job: ApiJob): PortalJobRecord {
-    const companyName = getCompanyName(job)
-    const category = formatValue(job.category ?? job.categoryName, "وظيفة")
-    const jobTitle = formatValue(job.title, category)
-    const logoUrl = getApiAssetUrl(job.company?.logoUrl)
-
-    return {
-        id: job._id,
-        companyName,
-        jobTitle,
-        location: formatValue(job.location),
-        logoSrc: logoUrl,
-        logoAlt: companyName,
-        to: getPortalJobPath(job._id),
-        category,
-        companyLegalName: companyName,
-        companyWebsite: formatValue(job.company?.website ?? job.companyId),
-        imageSrc: logoUrl ?? companyImage,
-        imageAlt: companyName,
-        detailColumns: createApiJobDetailColumns(job),
-    }
 }
 
 function resolveApiJobList(
@@ -213,6 +355,66 @@ function resolveApiJobDetail(response: ApiJobDetailResponse | undefined) {
     return response.data
 }
 
+export function mapApiJobToPortalJobRecord(
+    job: ApiJob,
+    fallback?: PortalJobRecord | null,
+): PortalJobRecord {
+    const companyName = formatValue(
+        job.company?.name ?? fallback?.companyName,
+        "شركة غير محددة",
+    )
+    const category = formatValue(
+        job.categoryName ?? job.category ?? fallback?.category,
+        "وظيفة",
+    )
+    const jobTitle = formatValue(job.title ?? fallback?.jobTitle, category)
+    const logoUrl = getApiAssetUrl(job.company?.logoUrl) ?? fallback?.logoSrc
+
+    return {
+        id: job._id,
+        companyName,
+        jobTitle,
+        location: formatValue(job.location ?? fallback?.location),
+        logoSrc: logoUrl,
+        logoAlt: fallback?.logoAlt ?? companyName,
+        logoLabel: fallback?.logoLabel,
+        to: fallback?.to ?? getPortalJobPath(job._id),
+        href: fallback?.href,
+        target: fallback?.target,
+        rel: fallback?.rel,
+        category,
+        companyLegalName: fallback?.companyLegalName ?? companyName,
+        companyWebsite: formatValue(
+            job.company?.website ?? fallback?.companyWebsite ?? job.companyId,
+        ),
+        imageSrc: logoUrl ?? fallback?.imageSrc ?? companyImage,
+        imageAlt: fallback?.imageAlt ?? companyName,
+        detailColumns: createApiJobDetailColumns(job),
+    }
+}
+
+function mapApiNearbyJobToPortalNearbyJobItem(job: ApiJob) {
+    const companyName = getCompanyName(job)
+    const jobTitle = formatValue(
+        job.title ?? job.categoryName ?? job.category,
+        "فرصة عمل",
+    )
+    const logoUrl = getApiAssetUrl(job.company?.logoUrl)
+
+    return {
+        id: job._id,
+        companyName,
+        jobTitle,
+        logoSrc: logoUrl,
+        logoAlt: companyName,
+        logoLabel: undefined,
+        to: getPortalJobPath(job._id),
+        href: undefined,
+        target: undefined,
+        rel: undefined,
+    }
+}
+
 export function usePortalJobs() {
     const query = useGetData<ApiJobListResponse | ApiJob[]>(
         "/jobs",
@@ -224,7 +426,24 @@ export function usePortalJobs() {
 
     return {
         ...query,
-        jobs: resolveApiJobList(query.data).map(mapApiJobToPortalJobRecord),
+        jobs: resolveApiJobList(query.data).map((job) =>
+            mapApiJobToPortalJobRecord(job),
+        ),
+    }
+}
+
+export function usePortalNearbyJobs() {
+    const query = useGetData<ApiJobListResponse | ApiJob[]>(
+        "/jobs/nearby",
+        {},
+        {
+            queryKey: ["portal-nearby-jobs"],
+        },
+    )
+
+    return {
+        ...query,
+        jobs: resolveApiJobList(query.data).map(mapApiNearbyJobToPortalNearbyJobItem),
     }
 }
 
@@ -240,7 +459,10 @@ export function usePortalJobCategories() {
     return query
 }
 
-export function usePortalJob(jobId: string | null) {
+export function usePortalJob(
+    jobId: string | null,
+    fallback?: PortalJobRecord | null,
+) {
     const query = useGetData<ApiJobDetailResponse>(
         jobId ? `/jobs/${encodeURIComponent(jobId)}` : null,
         {},
@@ -254,13 +476,15 @@ export function usePortalJob(jobId: string | null) {
 
     return {
         ...query,
-        job: apiJob ? mapApiJobToPortalJobRecord(apiJob) : null,
+        job: apiJob
+            ? mapApiJobToPortalJobRecord(apiJob, fallback)
+            : fallback ?? null,
     }
 }
 
 export function usePortalJobCategoryJobs(categoryId: string) {
     const query = useGetData<ApiJobListResponse | ApiJob[]>(
-        "/job-categories/" + categoryId + "/jobs",
+        `/job-categories/${categoryId}/jobs`,
         {},
         {
             enabled: Boolean(categoryId),
@@ -270,6 +494,8 @@ export function usePortalJobCategoryJobs(categoryId: string) {
 
     return {
         ...query,
-        jobs: resolveApiJobList(query.data).map(mapApiJobToPortalJobRecord),
+        jobs: resolveApiJobList(query.data).map((job) =>
+            mapApiJobToPortalJobRecord(job),
+        ),
     }
 }

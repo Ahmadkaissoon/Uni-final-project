@@ -1,98 +1,134 @@
-import { useEffect, useState } from "react";
-import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react"
+import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom"
 
-import { clearAuthSession, hasAuthSession, useLogout } from "../api";
+import { hasAuthSession } from "../api"
+import { usePortalAuthProfile } from "../api/portalAuthProfile"
 import {
-  PortalLayout,
-  defaultActivePageByRole,
-  type PortalRole,
-} from "../components/layout/PortalLayout";
+    PortalLayout,
+    defaultActivePageByRole,
+    type PortalProfile,
+    type PortalRole,
+} from "../components/layout/PortalLayout"
 import {
-  getPortalPageByPath,
-  getPortalPathByPageId,
-} from "./portalPages";
+    companyProfileEditorConfig,
+    personProfileEditorConfig,
+} from "../utils/portalProfileSchemas"
 import {
-  getStoredPortalProfileSummary,
-  subscribeToPortalProfileUpdates,
-} from "../utils/portalProfileStorage";
+    getStoredPortalProfileSummary,
+    subscribeToPortalProfileUpdates,
+} from "../utils/portalProfileStorage"
+import { getPortalPageByPath, getPortalPathByPageId } from "./portalPages"
 
 interface PortalRoleLayoutRouteProps {
-  role: PortalRole;
+    role: PortalRole
+}
+
+function hasCustomStoredProfileName(role: PortalRole, profile: PortalProfile) {
+    const fallbackName =
+        role === "company"
+            ? companyProfileEditorConfig.fallbackDisplayName
+            : personProfileEditorConfig.fallbackDisplayName
+
+    return profile.name.trim() && profile.name !== fallbackName
+}
+
+function mergePortalProfiles(
+    role: PortalRole,
+    storedProfile: PortalProfile,
+    apiProfile: PortalProfile | null,
+) {
+    if (!apiProfile) {
+        return storedProfile
+    }
+
+    const useStoredName = hasCustomStoredProfileName(role, storedProfile)
+    const resolvedName = useStoredName ? storedProfile.name : apiProfile.name
+    const resolvedAvatarSrc = storedProfile.avatarSrc ?? apiProfile.avatarSrc
+
+    return {
+        name: resolvedName,
+        tagline: storedProfile.tagline ?? apiProfile.tagline,
+        avatarSrc: resolvedAvatarSrc,
+        avatarLabel:
+            storedProfile.avatarLabel ??
+            apiProfile.avatarLabel ??
+            resolvedName
+                .trim()
+                .split(/\s+/)
+                .slice(0, 2)
+                .map((word) => word.charAt(0))
+                .join(""),
+    }
 }
 
 export default function PortalRoleLayoutRoute({
-  role,
+    role,
 }: PortalRoleLayoutRouteProps) {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const logoutMutation = useLogout();
-  const [profile, setProfile] = useState(() =>
-    getStoredPortalProfileSummary(role),
-  );
-  const resolvedPage = getPortalPageByPath(role, location.pathname);
+    const location = useLocation()
+    const navigate = useNavigate()
+    const hasSession = hasAuthSession()
+    const [storedProfile, setStoredProfile] = useState(() =>
+        getStoredPortalProfileSummary(role),
+    )
+    const authProfileQuery = usePortalAuthProfile(role, hasSession)
+    const resolvedPage = getPortalPageByPath(role, location.pathname)
 
-  const activePageId =
-    (resolvedPage?.id === "internship-details"
-      ? "internships"
-      : resolvedPage?.id === "category-jobs"
-        ? "jobs-categories"
-      : resolvedPage?.id === "companies-all"
-        ? "companies"
-        : resolvedPage?.id) ??
-    defaultActivePageByRole[role];
-  const redirectPath = `${location.pathname}${location.search}`;
+    const activePageId =
+        (resolvedPage?.id === "internship-details"
+            ? "internships"
+            : resolvedPage?.id === "category-jobs"
+              ? "jobs-categories"
+              : resolvedPage?.id === "companies-all"
+                ? "companies"
+                : resolvedPage?.id) ?? defaultActivePageByRole[role]
+    const redirectPath = `${location.pathname}${location.search}`
 
-  useEffect(() => {
-    return subscribeToPortalProfileUpdates((updatedRole) => {
-      if (updatedRole === role) {
-        setProfile(getStoredPortalProfileSummary(role));
-      }
-    });
-  }, [role]);
+    useEffect(() => {
+        return subscribeToPortalProfileUpdates((updatedRole) => {
+            if (updatedRole === role) {
+                setStoredProfile(getStoredPortalProfileSummary(role))
+            }
+        })
+    }, [role])
 
-  const handleLogout = async () => {
-    try {
-      await logoutMutation.mutateAsync();
-    } finally {
-      clearAuthSession();
-      navigate("/login", { replace: true });
+    const profile = useMemo(
+        () => mergePortalProfiles(role, storedProfile, authProfileQuery.profile),
+        [authProfileQuery.profile, role, storedProfile],
+    )
+
+    if (!hasSession) {
+        return (
+            <Navigate
+                to={`/login?redirect=${encodeURIComponent(redirectPath)}`}
+                replace
+            />
+        )
     }
-  };
 
-  if (!hasAuthSession()) {
     return (
-      <Navigate
-        to={`/login?redirect=${encodeURIComponent(redirectPath)}`}
-        replace
-      />
-    );
-  }
+        <PortalLayout
+            role={role}
+            activePageId={activePageId}
+            profile={profile}
+            onProfileClick={() => {
+                const nextPath = getPortalPathByPageId(
+                    role,
+                    role === "company" ? "company-profile" : "profile",
+                )
 
-  return (
-    <PortalLayout
-      role={role}
-      activePageId={activePageId}
-      profile={profile}
-      onLogout={handleLogout}
-      onProfileClick={() => {
-        const nextPath = getPortalPathByPageId(
-          role,
-          role === "company" ? "company-profile" : "profile",
-        );
+                if (nextPath && nextPath !== location.pathname) {
+                    navigate(nextPath)
+                }
+            }}
+            onPageChange={(pageId) => {
+                const nextPath = getPortalPathByPageId(role, pageId)
 
-        if (nextPath && nextPath !== location.pathname) {
-          navigate(nextPath);
-        }
-      }}
-      onPageChange={(pageId) => {
-        const nextPath = getPortalPathByPageId(role, pageId);
-
-        if (nextPath && nextPath !== location.pathname) {
-          navigate(nextPath);
-        }
-      }}
-    >
-      <Outlet />
-    </PortalLayout>
-  );
+                if (nextPath && nextPath !== location.pathname) {
+                    navigate(nextPath)
+                }
+            }}
+        >
+            <Outlet />
+        </PortalLayout>
+    )
 }

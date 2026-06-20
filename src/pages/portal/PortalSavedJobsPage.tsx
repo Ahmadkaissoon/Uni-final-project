@@ -1,5 +1,15 @@
-import { portalInternshipRecords } from "../../components/portal/portalInternshipsData"
-import { portalJobRecords } from "../../components/portal/portalJobsData"
+import { useMemo } from "react"
+
+import { usePortalJobs } from "../../api/portalJobs"
+import { usePortalTrainings } from "../../api/portalTrainings"
+import {
+    portalInternshipRecords,
+    type PortalInternshipListingItem,
+} from "../../components/portal/portalInternshipsData"
+import {
+    portalJobRecords,
+    type PortalJobRecord,
+} from "../../components/portal/portalJobsData"
 import PortalSavedJobsSection from "../../components/portal/PortalSavedJobsSection"
 import { usePortalSavedJobs } from "../../components/portal/usePortalSavedJobs"
 import { usePortalSavedTrainings } from "../../components/portal/usePortalSavedTrainings"
@@ -14,23 +24,41 @@ export default function PortalSavedJobsPage({
 }: PortalSavedJobsPageProps) {
     const { savedJobIds } = usePortalSavedJobs()
     const { savedTrainingIds } = usePortalSavedTrainings()
+    const jobsQuery = usePortalJobs()
+    const trainingsQuery = usePortalTrainings()
+
+    const availableJobs = useMemo(() => {
+        const jobsMap = new Map<string, PortalJobRecord>(
+            portalJobRecords.map((job) => [job.id, job]),
+        )
+
+        jobsQuery.jobs.forEach((job) => {
+            jobsMap.set(job.id, job)
+        })
+
+        return jobsMap
+    }, [jobsQuery.jobs])
 
     const savedJobs = savedJobIds
-        .map((savedJobId) =>
-            portalJobRecords.find((job) => job.id === savedJobId),
+        .map((savedJobId) => availableJobs.get(savedJobId))
+        .filter((job): job is PortalJobRecord => Boolean(job))
+
+    const availableTrainings = useMemo(() => {
+        const trainingsMap = new Map<string, PortalInternshipListingItem>(
+            portalInternshipRecords.map((training) => [training.id, training]),
         )
-        .filter((job): job is (typeof portalJobRecords)[number] => Boolean(job))
+
+        trainingsQuery.trainings.forEach((training) => {
+            trainingsMap.set(training.id, training)
+        })
+
+        return trainingsMap
+    }, [trainingsQuery.trainings])
 
     const savedTrainings = savedTrainingIds
-        .map((savedTrainingId) =>
-            portalInternshipRecords.find(
-                (training) => training.id === savedTrainingId,
-            ),
-        )
+        .map((savedTrainingId) => availableTrainings.get(savedTrainingId))
         .filter(
-            (
-                training,
-            ): training is (typeof portalInternshipRecords)[number] =>
+            (training): training is NonNullable<typeof training> =>
                 Boolean(training),
         )
 

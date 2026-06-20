@@ -1,8 +1,10 @@
 import { Plus } from "lucide-react"
 import { Link } from "react-router-dom"
 
+import { usePortalNearbyJobs } from "../../api/portalJobs"
 import { Button } from "../global/ui/button"
 import PortalNearbyJobCard from "./PortalNearbyJobCard"
+import PortalNearbyJobCardSkeleton from "./PortalNearbyJobCardSkeleton"
 
 export interface PortalNearbyJobItem {
     id: string
@@ -17,36 +19,32 @@ export interface PortalNearbyJobItem {
     rel?: string
 }
 
-const defaultNearbyJobs: PortalNearbyJobItem[] = [
-    {
-        id: "al-mateen-graphic-designer",
-        companyName: "شركة المتين",
-        jobTitle: "مصمم غرافيك",
-        to: "/jobs/all",
-    },
-    {
-        id: "al-mateen-ui-designer",
-        companyName: "شركة المتين",
-        jobTitle: "مصمم واجهات",
-        to: "/jobs/all",
-    },
-]
-
 interface PortalNearbyJobsSectionProps {
     title?: string
     jobs?: PortalNearbyJobItem[]
     showMoreLabel?: string
     showMoreTo?: string
     onShowMore?: () => void
+    emptyText?: string
 }
 
 export default function PortalNearbyJobsSection({
     title = "وظائف قريبة منك",
-    jobs = defaultNearbyJobs,
+    jobs,
     showMoreLabel = "عرض المزيد",
     showMoreTo = "/jobs/all",
     onShowMore,
+    emptyText = "لا توجد وظائف قريبة متاحة حالياً.",
 }: PortalNearbyJobsSectionProps) {
+    const nearbyJobsQuery = usePortalNearbyJobs()
+    const resolvedJobs = jobs ?? nearbyJobsQuery.jobs
+    const isLoading = jobs === undefined && nearbyJobsQuery.isLoading
+    const isError = jobs === undefined && nearbyJobsQuery.isError
+
+    if (!isLoading && resolvedJobs.length === 0 && !isError) {
+        return null
+    }
+
     const showMoreButtonClassName =
         "inline-flex items-center rounded-[8px] border border-warning-color bg-warning-color !px-4 !py-2 !text-size18 !font-bold !text-white hover:brightness-105"
 
@@ -64,20 +62,36 @@ export default function PortalNearbyJobsSection({
                     </div>
 
                     <div className="mx-auto flex w-full max-w-[920px] flex-col gap-6">
-                        {jobs.map((job) => (
-                            <PortalNearbyJobCard
-                                key={job.id}
-                                companyName={job.companyName}
-                                jobTitle={job.jobTitle}
-                                logoSrc={job.logoSrc}
-                                logoAlt={job.logoAlt}
-                                logoLabel={job.logoLabel}
-                                to={job.to}
-                                href={job.href}
-                                target={job.target}
-                                rel={job.rel}
-                            />
-                        ))}
+                        {isLoading
+                            ? Array.from({ length: 2 }).map((_, index) => (
+                                  <PortalNearbyJobCardSkeleton
+                                      key={`nearby-job-skeleton-${index + 1}`}
+                                  />
+                              ))
+                            : resolvedJobs.length > 0
+                              ? resolvedJobs.map((job) => (
+                                    <PortalNearbyJobCard
+                                        key={job.id}
+                                        companyName={job.companyName}
+                                        jobTitle={job.jobTitle}
+                                        logoSrc={job.logoSrc}
+                                        logoAlt={job.logoAlt}
+                                        logoLabel={job.logoLabel}
+                                        to={job.to}
+                                        href={job.href}
+                                        target={job.target}
+                                        rel={job.rel}
+                                    />
+                                ))
+                              : (
+                                  <div className="portal-category-card-shadow rounded-[18px] bg-white px-6 py-12 text-center">
+                                      <p className="m-0 text-size18 font-bold text-black">
+                                          {isError
+                                              ? "تعذر تحميل الوظائف القريبة حالياً، يرجى المحاولة لاحقاً."
+                                              : emptyText}
+                                      </p>
+                                  </div>
+                              )}
                     </div>
 
                     <div className="mt-8 flex justify-center sm:mt-10">
@@ -98,10 +112,7 @@ export default function PortalNearbyJobsSection({
                                 </span>
                             </Button>
                         ) : (
-                            <Link
-                                to={showMoreTo}
-                                className={showMoreButtonClassName}
-                            >
+                            <Link to={showMoreTo} className={showMoreButtonClassName}>
                                 <span className="ml-3 inline-flex items-center justify-center rounded-full border-2 border-white p-1">
                                     <Plus className="size-5" />
                                 </span>
