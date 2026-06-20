@@ -109,7 +109,7 @@ export default function PortalAllJobCategoriesSection({
                                       key={category._id}
                                       title={category.name}
                                       icon={category.icon}
-                                      href={"categories/" + category._id}
+                                      to={`/jobs/categories/${category._id}`}
                                   />
                               ))}
 

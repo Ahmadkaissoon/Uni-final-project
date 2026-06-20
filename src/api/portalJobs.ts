@@ -257,3 +257,19 @@ export function usePortalJob(jobId: string | null) {
         job: apiJob ? mapApiJobToPortalJobRecord(apiJob) : null,
     }
 }
+
+export function usePortalJobCategoryJobs(categoryId: string) {
+    const query = useGetData<ApiJobListResponse | ApiJob[]>(
+        "/job-categories/" + categoryId + "/jobs",
+        {},
+        {
+            enabled: Boolean(categoryId),
+            queryKey: ["portal-job-category-jobs", categoryId],
+        },
+    )
+
+    return {
+        ...query,
+        jobs: resolveApiJobList(query.data).map(mapApiJobToPortalJobRecord),
+    }
+}

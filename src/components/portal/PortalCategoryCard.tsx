@@ -1,3 +1,4 @@
+import { type ReactNode } from "react"
 import { Link } from "react-router-dom"
 
 import { cn } from "../../utils/cn"
@@ -34,7 +35,7 @@ import {
 import { HelpCircle } from "lucide-react"
 interface PortalCategoryCardProps {
     title: string
-    icon: string
+    icon: string | ReactNode
     to?: string
     href?: string
     target?: string
@@ -88,11 +89,16 @@ export default function PortalCategoryCard({
         className,
     )
 
-    const Icon = categoryIcons[icon] || HelpCircle
+    const iconContent =
+        typeof icon === "string" ? (() => {
+            const Icon = categoryIcons[icon] || HelpCircle
+            return <Icon size={20} />
+        })() : (icon ?? <HelpCircle size={20} />)
+
     const content = (
         <>
             <span className="mb-8 inline-flex items-center justify-center text-black [&_svg]:size-[56px]">
-                <Icon size={20} />
+                {iconContent}
             </span>
 
             <h3 className="m-0 text-size24 font-bold leading-[1.35] text-black">
