@@ -6,6 +6,7 @@ import PortalOpportunityTabs, {
     type PortalOpportunityTab,
 } from "./PortalOpportunityTabs"
 import PortalSavedOpportunityCard from "./PortalSavedOpportunityCard"
+import PortalSavedOpportunityCardSkeleton from "./PortalSavedOpportunityCardSkeleton"
 
 export interface PortalSavedOpportunityItem {
     id: string
@@ -25,6 +26,8 @@ interface PortalSavedJobsSectionProps {
     description?: string
     savedJobs?: PortalSavedOpportunityItem[]
     savedTrainings?: PortalSavedOpportunityItem[]
+    isLoadingJobs?: boolean
+    isLoadingTrainings?: boolean
     itemsPerPage?: number
 }
 
@@ -33,6 +36,8 @@ export default function PortalSavedJobsSection({
     description = "هنا ستجد جميع الوظائف، وفرص التدريب التي قمت بالإعجاب بها لتقدم عليها.",
     savedJobs = [],
     savedTrainings = [],
+    isLoadingJobs = false,
+    isLoadingTrainings = false,
     itemsPerPage = 4,
 }: PortalSavedJobsSectionProps) {
     const [activeTab, setActiveTab] = useState<PortalOpportunityTab>("jobs")
@@ -46,6 +51,9 @@ export default function PortalSavedJobsSection({
     const visibleCount = Math.min(activeItems.length, visiblePages * itemsPerPage)
     const visibleItems = activeItems.slice(0, visibleCount)
     const canShowMore = visibleCount < activeItems.length
+    const isActiveTabLoading =
+        activeTab === "jobs" ? isLoadingJobs : isLoadingTrainings
+    const skeletonItems = Array.from({ length: itemsPerPage })
 
     function handleTabChange(nextTab: PortalOpportunityTab) {
         setActiveTab(nextTab)
@@ -74,7 +82,13 @@ export default function PortalSavedJobsSection({
                     </div>
 
                     <div className="flex flex-col gap-4">
-                        {visibleItems.length > 0 ? (
+                        {isActiveTabLoading ? (
+                            skeletonItems.map((_, index) => (
+                                <PortalSavedOpportunityCardSkeleton
+                                    key={`saved-opportunity-skeleton-${activeTab}-${index + 1}`}
+                                />
+                            ))
+                        ) : visibleItems.length > 0 ? (
                             visibleItems.map((item) => (
                                 <PortalSavedOpportunityCard
                                     key={item.id}
@@ -105,7 +119,7 @@ export default function PortalSavedJobsSection({
                         )}
                     </div>
 
-                    {canShowMore ? (
+                    {!isActiveTabLoading && canShowMore ? (
                         <div className="mt-8 flex justify-center sm:mt-10">
                             <Button
                                 type="button"
@@ -131,4 +145,3 @@ export default function PortalSavedJobsSection({
         </section>
     )
 }
-

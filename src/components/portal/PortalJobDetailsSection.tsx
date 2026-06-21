@@ -22,7 +22,8 @@ export default function PortalJobDetailsSection({
     showActions = true,
 }: PortalJobDetailsSectionProps) {
     const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false)
-    const { isSavedJob, toggleSavedJob } = usePortalSavedJobs()
+    const { isSavedJob, toggleSavedJob, isSavedJobsActionPending } =
+        usePortalSavedJobs()
     const isSaved = isSavedJob(job.id)
 
     return (
@@ -106,7 +107,10 @@ export default function PortalJobDetailsSection({
                                 variant="panel"
                                 size="normal"
                                 aria-pressed={isSaved}
-                                onClick={() => toggleSavedJob(job.id)}
+                                loading={isSavedJobsActionPending}
+                                onClick={() => {
+                                    void toggleSavedJob(job.id)
+                                }}
                                 className={cn(
                                     "inline-flex min-h-[52px] w-full items-center justify-center rounded-[10px] !px-6 !py-3 !text-size18 !font-bold transition duration-200 sm:w-auto",
                                     isSaved

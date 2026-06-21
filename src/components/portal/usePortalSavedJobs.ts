@@ -1,73 +1,49 @@
-import { useState } from "react"
-
-const PORTAL_SAVED_JOB_IDS_STORAGE_KEY = "portal-saved-job-ids"
-
-function normalizeSavedJobIds(value: unknown) {
-    if (!Array.isArray(value)) {
-        return []
-    }
-
-    return Array.from(
-        new Set(value.filter((item): item is string => typeof item === "string")),
-    )
-}
-
-function readSavedJobIds() {
-    if (typeof window === "undefined") {
-        return []
-    }
-
-    try {
-        const rawValue = window.localStorage.getItem(
-            PORTAL_SAVED_JOB_IDS_STORAGE_KEY,
-        )
-
-        if (!rawValue) {
-            return []
-        }
-
-        return normalizeSavedJobIds(JSON.parse(rawValue))
-    } catch {
-        return []
-    }
-}
-
-function writeSavedJobIds(savedJobIds: string[]) {
-    if (typeof window === "undefined") {
-        return
-    }
-
-    window.localStorage.setItem(
-        PORTAL_SAVED_JOB_IDS_STORAGE_KEY,
-        JSON.stringify(savedJobIds),
-    )
-}
+import {
+    usePortalSavedJobsQuery,
+    useRemovePortalSavedJob,
+    useSavePortalJob,
+} from "../../api/portalSaved"
 
 export function usePortalSavedJobs() {
-    const [savedJobIds, setSavedJobIds] = useState<string[]>(readSavedJobIds)
+    const savedJobsQuery = usePortalSavedJobsQuery()
+    const saveJobMutation = useSavePortalJob()
+    const removeSavedJobMutation = useRemovePortalSavedJob()
+    const savedJobs = savedJobsQuery.savedJobs
+    const savedJobsByJobId = new Map(
+        savedJobs.map((savedJob) => [savedJob.jobId, savedJob]),
+    )
 
     function isSavedJob(jobId: string) {
-        return savedJobIds.includes(jobId)
+        return savedJobsByJobId.has(jobId)
     }
 
-    function toggleSavedJob(jobId: string) {
-        setSavedJobIds((currentSavedJobIds) => {
-            const nextSavedJobIds = currentSavedJobIds.includes(jobId)
-                ? currentSavedJobIds.filter(
-                      (savedJobId) => savedJobId !== jobId,
-                  )
-                : [...currentSavedJobIds, jobId]
+    async function toggleSavedJob(jobId: string, notes = "") {
+        const savedJob = savedJobsByJobId.get(jobId)
 
-            writeSavedJobIds(nextSavedJobIds)
+        if (savedJob) {
+            await removeSavedJobMutation.mutateAsync(
+                `/saved/jobs/${encodeURIComponent(savedJob.savedId)}`,
+            )
+            return
+        }
 
-            return nextSavedJobIds
+        await saveJobMutation.mutateAsync({
+            jobId,
+            notes,
         })
     }
 
     return {
-        savedJobIds,
-        hasSavedJobs: savedJobIds.length > 0,
+        savedJobs,
+        savedJobIds: savedJobs.map((savedJob) => savedJob.jobId),
+        hasSavedJobs: savedJobs.length > 0,
         isSavedJob,
         toggleSavedJob,
+        isLoadingSavedJobs: savedJobsQuery.isLoading,
+        isFetchingSavedJobs: savedJobsQuery.isFetching,
+        isSavingJob: saveJobMutation.isPending,
+        isRemovingSavedJob: removeSavedJobMutation.isPending,
+        isSavedJobsActionPending:
+            saveJobMutation.isPending || removeSavedJobMutation.isPending,
     }
 }

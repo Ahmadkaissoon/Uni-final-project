@@ -10,10 +10,6 @@ import {
     type PortalRole,
 } from "../components/layout/PortalLayout"
 import {
-    companyProfileEditorConfig,
-    personProfileEditorConfig,
-} from "../utils/portalProfileSchemas"
-import {
     getStoredPortalProfileSummary,
     subscribeToPortalProfileUpdates,
 } from "../utils/portalProfileStorage"
@@ -23,17 +19,7 @@ interface PortalRoleLayoutRouteProps {
     role: PortalRole
 }
 
-function hasCustomStoredProfileName(role: PortalRole, profile: PortalProfile) {
-    const fallbackName =
-        role === "company"
-            ? companyProfileEditorConfig.fallbackDisplayName
-            : personProfileEditorConfig.fallbackDisplayName
-
-    return profile.name.trim() && profile.name !== fallbackName
-}
-
 function mergePortalProfiles(
-    role: PortalRole,
     storedProfile: PortalProfile,
     apiProfile: PortalProfile | null,
 ) {
@@ -41,9 +27,8 @@ function mergePortalProfiles(
         return storedProfile
     }
 
-    const useStoredName = hasCustomStoredProfileName(role, storedProfile)
-    const resolvedName = useStoredName ? storedProfile.name : apiProfile.name
-    const resolvedAvatarSrc = storedProfile.avatarSrc ?? apiProfile.avatarSrc
+    const resolvedName = apiProfile.name.trim() || storedProfile.name
+    const resolvedAvatarSrc = apiProfile.avatarSrc ?? storedProfile.avatarSrc
 
     return {
         name: resolvedName,
@@ -92,8 +77,8 @@ export default function PortalRoleLayoutRoute({
     }, [role])
 
     const profile = useMemo(
-        () => mergePortalProfiles(role, storedProfile, authProfileQuery.profile),
-        [authProfileQuery.profile, role, storedProfile],
+        () => mergePortalProfiles(storedProfile, authProfileQuery.profile),
+        [authProfileQuery.profile, storedProfile],
     )
 
     if (!hasSession) {
