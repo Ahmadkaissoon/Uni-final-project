@@ -2,7 +2,6 @@ import { type ReactNode, useEffect, useMemo, useState } from "react"
 import { Bell, ChevronDown, Menu, X } from "lucide-react"
 
 import blueLogo from "../../assets/icons/blue_logo.png"
-// import whiteLogo from "../../assets/icons/white_logo.png";
 import { cn } from "../../utils/cn"
 
 export type PortalRole = "user" | "company"
@@ -33,7 +32,7 @@ interface PortalRoleConfig {
     footerSections: PortalFooterSection[]
 }
 
-interface PortalProfile {
+export interface PortalProfile {
     name: string
     tagline?: string
     avatarSrc?: string
@@ -70,7 +69,10 @@ export const portalLayoutConfig: Record<PortalRole, PortalRoleConfig> = {
                 label: "الوظائف",
                 children: [
                     { id: "jobs-all", label: "كافة الوظائف" },
-                    { id: "jobs-categories", label: "كافة تصنيفات الوظائف" },
+                    {
+                        id: "jobs-categories",
+                        label: "كافة تصنيفات الوظائف",
+                    },
                     { id: "internships", label: "فرص التدريب" },
                     { id: "watchlist", label: "مراقبة" },
                 ],
@@ -101,7 +103,10 @@ export const portalLayoutConfig: Record<PortalRole, PortalRoleConfig> = {
                 links: [
                     { id: "profile", label: "عرض الملف الشخصي" },
                     { id: "profile-edit", label: "تعديل الملف الشخصي" },
-                    { id: "profile-settings", label: "الإعدادات الشخصية" },
+                    {
+                        id: "profile-settings",
+                        label: "الإعدادات الشخصية",
+                    },
                 ],
             },
         ],
@@ -128,7 +133,10 @@ export const portalLayoutConfig: Record<PortalRole, PortalRoleConfig> = {
                 links: [
                     { id: "company-all-jobs", label: "عرض كافة الوظائف" },
                     { id: "company-create-job", label: "إنشاء وظيفة" },
-                    { id: "company-applications", label: "عرض طلبات التوظيف" },
+                    {
+                        id: "company-applications",
+                        label: "عرض طلبات التوظيف",
+                    },
                 ],
             },
             {
@@ -138,7 +146,10 @@ export const portalLayoutConfig: Record<PortalRole, PortalRoleConfig> = {
                         id: "company-training-list",
                         label: "عرض كافة التدريبات",
                     },
-                    { id: "company-create-training", label: "إنشاء التدريب" },
+                    {
+                        id: "company-create-training",
+                        label: "إنشاء التدريب",
+                    },
                     {
                         id: "company-training-applications",
                         label: "عرض طلبات التدريب",
@@ -149,7 +160,10 @@ export const portalLayoutConfig: Record<PortalRole, PortalRoleConfig> = {
                 title: "الملف الشخصي",
                 links: [
                     { id: "company-profile", label: "عرض الملف الشخصي" },
-                    { id: "company-profile-edit", label: "تعديل الملف الشخصي" },
+                    {
+                        id: "company-profile-edit",
+                        label: "تعديل الملف الشخصي",
+                    },
                     { id: "company-account", label: "إعدادات الحساب" },
                 ],
             },
@@ -293,7 +307,7 @@ export function PortalLayout({
                     >
                         <button
                             type="button"
-                            className="inline-flex h-[46px] w-[clamp(92px,8.5vw,118px)] shrink-0 cursor-pointer items-center justify-center rounded-[16px] bg-second-white-color px-[12px] py-[9px] shadow-[0_12px_24px_rgb(8_24_61_/_0.18)] hover:shadow-[0_14px_28px_rgb(8_24_61_/_0.22)] max-[1100px]:order-1  max-[1100px]:w-[102px] max-[1100px]:px-[10px] max-[1100px]:py-2 max-[640px]:w-[88px] max-[640px]:rounded-[14px] max-[640px]:px-[9px] max-[640px]:py-[7px]"
+                            className="inline-flex h-[46px] w-[clamp(92px,8.5vw,118px)] shrink-0 cursor-pointer items-center justify-center rounded-[16px] bg-second-white-color px-[12px] py-[9px] shadow-[0_12px_24px_rgb(8_24_61_/_0.18)] hover:shadow-[0_14px_28px_rgb(8_24_61_/_0.22)] max-[1100px]:order-1 max-[1100px]:w-[102px] max-[1100px]:px-[10px] max-[1100px]:py-2 max-[640px]:w-[88px] max-[640px]:rounded-[14px] max-[640px]:px-[9px] max-[640px]:py-[7px]"
                             onClick={() =>
                                 onPageChange?.(homePageIdByRole[role])
                             }
@@ -308,7 +322,7 @@ export function PortalLayout({
 
                         <button
                             type="button"
-                            className="hidden size-[42px] cursor-pointer items-center justify-center rounded-xl border border-white/25 bg-white/10 text-inverse-fg  hover:bg-white/15 max-[1100px]:order-2 max-[1100px]:ms-auto max-[1100px]:inline-flex"
+                            className="hidden size-[42px] cursor-pointer items-center justify-center rounded-xl border border-white/25 bg-white/10 text-inverse-fg hover:bg-white/15 max-[1100px]:order-2 max-[1100px]:ms-auto max-[1100px]:inline-flex"
                             onClick={() =>
                                 setMobileMenuOpen((current) => !current)
                             }
@@ -358,9 +372,7 @@ export function PortalLayout({
                                                 handleItemClick(item)
                                             }
                                             aria-expanded={
-                                                item.children
-                                                    ? isOpen
-                                                    : undefined
+                                                item.children ? isOpen : undefined
                                             }
                                         >
                                             <span>{item.label}</span>
@@ -382,8 +394,7 @@ export function PortalLayout({
                                             >
                                                 {item.children.map((child) => {
                                                     const childIsActive =
-                                                        child.id ===
-                                                        activePageId
+                                                        child.id === activePageId
 
                                                     return (
                                                         <button
@@ -412,7 +423,7 @@ export function PortalLayout({
                             })}
                         </nav>
 
-                        <div className="flex shrink-0 items-center justify-start gap-3 max-[1100px]:order-3 max-[1100px]:w-full max-[1100px]:justify-between max-[640px]:flex-wrap">
+                        <div className="flex shrink-0 items-center justify-start gap-2.5 max-[1100px]:order-3 max-[1100px]:w-full max-[1100px]:justify-between max-[640px]:gap-2">
                             <button
                                 type="button"
                                 className="inline-flex size-[38px] cursor-pointer items-center justify-center rounded-[10px] bg-transparent text-inverse-fg transition duration-200 hover:bg-white/15"
@@ -431,7 +442,8 @@ export function PortalLayout({
                                 onClick={onProfileClick}
                                 className={cn(
                                     "inline-flex items-center gap-[10px] rounded-[14px] bg-transparent p-0 text-start transition duration-200",
-                                    onProfileClick && "cursor-pointer hover:bg-white/10 max-[640px]:w-full max-[640px]:justify-start max-[640px]:rounded-[12px] max-[640px]:px-2 max-[640px]:py-1.5",
+                                    onProfileClick &&
+                                        "cursor-pointer hover:bg-white/10 max-[640px]:w-full max-[640px]:justify-start max-[640px]:rounded-[12px] max-[640px]:px-2 max-[640px]:py-1.5",
                                 )}
                                 aria-label="فتح الملف الشخصي"
                             >

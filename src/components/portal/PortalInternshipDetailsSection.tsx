@@ -47,7 +47,11 @@ export default function PortalInternshipDetailsSection({
     const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false)
     const [selectedCompany, setSelectedCompany] =
         useState<PortalCompanyDirectoryItem | null>(null)
-    const { isSavedTraining, toggleSavedTraining } = usePortalSavedTrainings()
+    const {
+        isSavedTraining,
+        toggleSavedTraining,
+        isSavedTrainingsActionPending,
+    } = usePortalSavedTrainings()
     const isSaved = isSavedTraining(internship.id)
     const internshipCompany = createCompanyItemFromInternship(internship)
     const companiesForDetails = getCompaniesForDetails(internshipCompany)
@@ -148,9 +152,14 @@ export default function PortalInternshipDetailsSection({
                                         variant="panel"
                                         size="normal"
                                         aria-pressed={isSaved}
-                                        onClick={() =>
-                                            toggleSavedTraining(internship.id)
+                                        loading={
+                                            isSavedTrainingsActionPending
                                         }
+                                        onClick={() => {
+                                            void toggleSavedTraining(
+                                                internship.id,
+                                            )
+                                        }}
                                         className={cn(
                                             "inline-flex min-h-[48px] w-full items-center justify-center rounded-xl !px-4 !py-2 !text-base !font-bold transition duration-200 min-[480px]:min-h-[52px] min-[480px]:!text-size18 min-[900px]:w-auto min-[1440px]:!px-6 min-[1440px]:!py-3",
                                             isSaved

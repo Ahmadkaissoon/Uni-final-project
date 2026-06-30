@@ -1,13 +1,20 @@
 import {
+  type ChangeEvent,
   type CSSProperties,
   type ReactNode,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { ChevronDown, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+import {
+  buildCompanySignupPayload,
+  readRegisterCredentials,
+  useSignup,
+} from "../../../api";
 import Stepper, {
   type StepType,
 } from "../../../components/global/stepper/Stepper";
@@ -24,6 +31,21 @@ import {
 } from "../../../utils/portalProfileStorage";
 
 type CompanyWizardStepKey = "basic" | "manager" | "needs";
+
+interface CompanyWizardProfileData extends CompanyProfileData {
+  logo: File | null;
+  logoFileName: string;
+  licenseImage: File | null;
+  licenseImageFileName: string;
+}
+
+const emptyCompanyWizardProfileData: CompanyWizardProfileData = {
+  ...emptyCompanyProfileData,
+  logo: null,
+  logoFileName: "",
+  licenseImage: null,
+  licenseImageFileName: "",
+};
 
 const companyWizardSteps: Array<{
   key: CompanyWizardStepKey;
@@ -69,14 +91,23 @@ function FieldLabel({
 
 function CompanyProfileWizard() {
   const navigate = useNavigate();
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const licenseImageInputRef = useRef<HTMLInputElement | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [formData, setFormData] = useState<CompanyProfileData>(() =>
-    readStoredProfile<CompanyProfileData>(
+  const [submissionError, setSubmissionError] = useState("");
+  const signupMutation = useSignup();
+  const [formData, setFormData] = useState<CompanyWizardProfileData>(() => {
+    const storedProfile = readStoredProfile<CompanyProfileData>(
       companyProfileEditorConfig.storageKey,
       emptyCompanyProfileData,
-    ),
-  );
+    );
+
+    return {
+      ...emptyCompanyWizardProfileData,
+      ...storedProfile,
+    };
+  });
 
   const steps: StepType[] = useMemo(
     () =>
@@ -87,9 +118,9 @@ function CompanyProfileWizard() {
     [],
   );
 
-  const updateField = <K extends keyof CompanyProfileData>(
+  const updateField = <K extends keyof CompanyWizardProfileData>(
     field: K,
-    value: CompanyProfileData[K],
+    value: CompanyWizardProfileData[K],
   ) => {
     setFormData((current) => ({
       ...current,
@@ -97,10 +128,36 @@ function CompanyProfileWizard() {
     }));
   };
 
+  const handleFileSelection =
+    (field: "logo" | "licenseImage") =>
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const selectedFile = event.target.files?.[0] ?? null;
+
+      updateField(field, selectedFile);
+      updateField(
+        field === "logo" ? "logoFileName" : "licenseImageFileName",
+        selectedFile?.name ?? "",
+      );
+    };
+
   useEffect(() => {
     writeStoredProfile<CompanyProfileData>(
       companyProfileEditorConfig.storageKey,
-      formData,
+      {
+        companyName: formData.companyName,
+        sector: formData.sector,
+        employeeCount: formData.employeeCount,
+        country: formData.country,
+        city: formData.city,
+        address: formData.address,
+        companyPhone: formData.companyPhone,
+        website: formData.website,
+        hiringManagerName: formData.hiringManagerName,
+        companyEmail: formData.companyEmail,
+        hiringJobTypes: formData.hiringJobTypes,
+        monthlyOpenings: formData.monthlyOpenings,
+        companyRecommendations: formData.companyRecommendations,
+      },
     );
     notifyPortalProfileUpdate("company");
   }, [formData]);
@@ -117,8 +174,35 @@ function CompanyProfileWizard() {
     setCurrentStep((current) => Math.max(current - 1, 0));
   };
 
-  const handleFinish = () => {
-    setIsCompleted(true);
+  const handleFinish = async () => {
+    const credentials = readRegisterCredentials();
+
+    if (!credentials) {
+      navigate("/register");
+      return;
+    }
+
+    setSubmissionError("");
+
+    if (!formData.logo || !formData.licenseImage) {
+      setSubmissionError("يرجى اختيار شعار الشركة وصورة الترخيص قبل إنشاء الحساب.");
+      return;
+    }
+
+    try {
+      await signupMutation.mutateAsync(
+        buildCompanySignupPayload(credentials, formData),
+      );
+      setIsCompleted(true);
+      navigate("/company");
+    } catch (error) {
+      setIsCompleted(false);
+      setSubmissionError(
+        error instanceof Error
+          ? error.message
+          : "تعذر إنشاء الحساب، يرجى المحاولة مرة أخرى.",
+      );
+    }
   };
 
   const currentStepKey = companyWizardSteps[currentStep]?.key;
@@ -207,6 +291,46 @@ function CompanyProfileWizard() {
               onChange={(event) => updateField("website", event.target.value)}
               className={inputClassName}
             />
+          </FieldLabel>
+
+          <FieldLabel label="شعار الشركة" required>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelection("logo")}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => logoInputRef.current?.click()}
+              className={cn(
+                inputClassName,
+                "cursor-pointer text-right text-[#9ea3ab]",
+              )}
+            >
+              {formData.logoFileName || "اختر شعار الشركة"}
+            </button>
+          </FieldLabel>
+
+          <FieldLabel label="صورة الترخيص" required>
+            <input
+              ref={licenseImageInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelection("licenseImage")}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => licenseImageInputRef.current?.click()}
+              className={cn(
+                inputClassName,
+                "cursor-pointer text-right text-[#9ea3ab]",
+              )}
+            >
+              {formData.licenseImageFileName || "اختر صورة الترخيص"}
+            </button>
           </FieldLabel>
         </div>
       );
@@ -333,6 +457,12 @@ function CompanyProfileWizard() {
                 </div>
               ) : null}
 
+              {submissionError ? (
+                <div className="rounded-[14px] border border-[#c96868] bg-[#fff0f0] px-4 py-3 text-right text-size16 text-[#9d3434]">
+                  {submissionError}
+                </div>
+              ) : null}
+
               <div className="flex flex-wrap items-end justify-end gap-3">
                 {currentStep > 0 ? (
                   <button
@@ -351,7 +481,8 @@ function CompanyProfileWizard() {
                       ? handleFinish
                       : handleNextStep
                   }
-                  className="min-w-[140px] cursor-pointer rounded-[10px] bg-[#5faa73] px-6 py-3 text-size18 font-medium text-white transition duration-200 hover:brightness-95"
+                  disabled={signupMutation.isPending}
+                  className="min-w-[140px] cursor-pointer rounded-[10px] bg-[#5faa73] px-6 py-3 text-size18 font-medium text-white transition duration-200 hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {currentStep === companyWizardSteps.length - 1
                     ? "تأكيد"

@@ -11,6 +11,7 @@ import PortalCompanyStudiesPage from "../pages/portal/PortalCompanyStudiesPage"
 import PortalAllCompaniesPage from "../pages/portal/PortalAllCompaniesPage"
 import PortalAllJobsPage from "../pages/portal/PortalAllJobsPage"
 import PortalCareerGuidancePage from "../pages/portal/PortalCareerGuidancePage"
+import PortalCategoryJobsPage from "../pages/portal/PortalCategoryJobsPage"
 import PortalHomePage from "../pages/portal/PortalHomePage"
 import PortalInternshipDetailsPage from "../pages/portal/PortalInternshipDetailsPage"
 import PortalInternshipsPage from "../pages/portal/PortalInternshipsPage"
@@ -30,6 +31,7 @@ const portalPageRegistry: Partial<Record<string, PortalPageComponent>> = {
     "internship-details": PortalInternshipDetailsPage,
     "jobs-all": PortalAllJobsPage,
     "jobs-categories": PortalAllJobCategoriesPage,
+    "category-jobs": PortalCategoryJobsPage,
     "company-create-job": PortalCompanyCreateJobPage,
     "company-create-training": PortalCompanyCreateTrainingPage,
     "company-applications": PortalCompanyApplicationsPage,

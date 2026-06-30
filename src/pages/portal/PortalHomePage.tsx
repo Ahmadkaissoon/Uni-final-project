@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 
 import type { PortalPageDefinition } from "../../router/portalPages"
 import PortalCompaniesCarouselSection from "../../components/portal/PortalCompaniesCarouselSection"
+import PortalFeaturedTrainingsSection from "../../components/portal/PortalFeaturedTrainingsSection"
 import PortalHero from "../../components/portal/PortalHero"
 import PortalJobCategoriesSection from "../../components/portal/PortalJobCategoriesSection"
 import PortalNearbyJobsSection from "../../components/portal/PortalNearbyJobsSection"
@@ -59,6 +60,8 @@ export default function PortalHomePage({ page }: PortalHomePageProps) {
             {page.role === "user" ? <PortalCompaniesCarouselSection /> : null}
 
             {page.role === "user" ? <PortalNearbyJobsSection /> : null}
+
+            {page.role === "user" ? <PortalFeaturedTrainingsSection /> : null}
         </section>
     )
 }

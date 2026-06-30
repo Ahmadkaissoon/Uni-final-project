@@ -1,76 +1,55 @@
-import { useState } from "react"
-
-const PORTAL_SAVED_TRAINING_IDS_STORAGE_KEY = "portal-saved-training-ids"
-
-function normalizeSavedTrainingIds(value: unknown) {
-    if (!Array.isArray(value)) {
-        return []
-    }
-
-    return Array.from(
-        new Set(value.filter((item): item is string => typeof item === "string")),
-    )
-}
-
-function readSavedTrainingIds() {
-    if (typeof window === "undefined") {
-        return []
-    }
-
-    try {
-        const rawValue = window.localStorage.getItem(
-            PORTAL_SAVED_TRAINING_IDS_STORAGE_KEY,
-        )
-
-        if (!rawValue) {
-            return []
-        }
-
-        return normalizeSavedTrainingIds(JSON.parse(rawValue))
-    } catch {
-        return []
-    }
-}
-
-function writeSavedTrainingIds(savedTrainingIds: string[]) {
-    if (typeof window === "undefined") {
-        return
-    }
-
-    window.localStorage.setItem(
-        PORTAL_SAVED_TRAINING_IDS_STORAGE_KEY,
-        JSON.stringify(savedTrainingIds),
-    )
-}
+import {
+    usePortalSavedTrainingsQuery,
+    useRemovePortalSavedTraining,
+    useSavePortalTraining,
+} from "../../api/portalSaved"
 
 export function usePortalSavedTrainings() {
-    const [savedTrainingIds, setSavedTrainingIds] =
-        useState<string[]>(readSavedTrainingIds)
+    const savedTrainingsQuery = usePortalSavedTrainingsQuery()
+    const saveTrainingMutation = useSavePortalTraining()
+    const removeSavedTrainingMutation = useRemovePortalSavedTraining()
+    const savedTrainings = savedTrainingsQuery.savedTrainings
+    const savedTrainingsByTrainingId = new Map(
+        savedTrainings.map((savedTraining) => [
+            savedTraining.trainingId,
+            savedTraining,
+        ]),
+    )
 
     function isSavedTraining(trainingId: string) {
-        return savedTrainingIds.includes(trainingId)
+        return savedTrainingsByTrainingId.has(trainingId)
     }
 
-    function toggleSavedTraining(trainingId: string) {
-        setSavedTrainingIds((currentSavedTrainingIds) => {
-            const nextSavedTrainingIds = currentSavedTrainingIds.includes(
-                trainingId,
+    async function toggleSavedTraining(trainingId: string, notes = "") {
+        const savedTraining = savedTrainingsByTrainingId.get(trainingId)
+
+        if (savedTraining) {
+            await removeSavedTrainingMutation.mutateAsync(
+                `/saved/trainings/${encodeURIComponent(savedTraining.savedId)}`,
             )
-                ? currentSavedTrainingIds.filter(
-                      (savedTrainingId) => savedTrainingId !== trainingId,
-                  )
-                : [...currentSavedTrainingIds, trainingId]
+            return
+        }
 
-            writeSavedTrainingIds(nextSavedTrainingIds)
-
-            return nextSavedTrainingIds
+        await saveTrainingMutation.mutateAsync({
+            trainingId,
+            notes,
         })
     }
 
     return {
-        savedTrainingIds,
-        hasSavedTrainings: savedTrainingIds.length > 0,
+        savedTrainings,
+        savedTrainingIds: savedTrainings.map(
+            (savedTraining) => savedTraining.trainingId,
+        ),
+        hasSavedTrainings: savedTrainings.length > 0,
         isSavedTraining,
         toggleSavedTraining,
+        isLoadingSavedTrainings: savedTrainingsQuery.isLoading,
+        isFetchingSavedTrainings: savedTrainingsQuery.isFetching,
+        isSavingTraining: saveTrainingMutation.isPending,
+        isRemovingSavedTraining: removeSavedTrainingMutation.isPending,
+        isSavedTrainingsActionPending:
+            saveTrainingMutation.isPending ||
+            removeSavedTrainingMutation.isPending,
     }
 }

@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { ChevronLeft, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+import { writeRegisterCredentials } from "../../../api";
 import blueLogo from "../../../assets/icons/blue_logo.png";
 
 function Register() {
@@ -25,6 +26,10 @@ function Register() {
       return;
     }
 
+    writeRegisterCredentials({
+      email,
+      password,
+    });
     navigate("/register/account-type");
   };
 

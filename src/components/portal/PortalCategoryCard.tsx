@@ -1,11 +1,41 @@
-import type { ReactNode } from "react"
+import { type ReactNode } from "react"
 import { Link } from "react-router-dom"
 
 import { cn } from "../../utils/cn"
+import {
+    Code,
+    Palette,
+    TrendingUp,
+    FileText,
+    Video,
+    BarChart3,
+    Headphones,
+    Languages,
+    DollarSign,
+    Users,
+    Cpu,
+    Shield,
+    Cloud,
+    Smartphone,
+    GitBranch,
+    Camera,
+    Layout,
+    PlayCircle,
+    Music,
+    Scale,
+    Clipboard,
+    ShoppingCart,
+    Store,
+    Briefcase,
+    BookOpen,
+    Book,
+    type LucideIcon,
+} from "lucide-react"
 
+import { HelpCircle } from "lucide-react"
 interface PortalCategoryCardProps {
     title: string
-    icon: ReactNode
+    icon: string | ReactNode
     to?: string
     href?: string
     target?: string
@@ -14,6 +44,34 @@ interface PortalCategoryCardProps {
     className?: string
 }
 
+const categoryIcons: Record<string, LucideIcon> = {
+    code: Code,
+    palette: Palette,
+    "trending-up": TrendingUp,
+    "file-text": FileText,
+    video: Video,
+    "bar-chart": BarChart3,
+    headset: Headphones,
+    languages: Languages,
+    "dollar-sign": DollarSign,
+    users: Users,
+    cpu: Cpu,
+    shield: Shield,
+    cloud: Cloud,
+    smartphone: Smartphone,
+    "git-branch": GitBranch,
+    camera: Camera,
+    layout: Layout,
+    "play-circle": PlayCircle,
+    music: Music,
+    scale: Scale,
+    clipboard: Clipboard,
+    "shopping-cart": ShoppingCart,
+    store: Store,
+    briefcase: Briefcase,
+    "book-open": BookOpen,
+    book: Book,
+}
 export default function PortalCategoryCard({
     title,
     icon,
@@ -31,10 +89,16 @@ export default function PortalCategoryCard({
         className,
     )
 
+    const iconContent =
+        typeof icon === "string" ? (() => {
+            const Icon = categoryIcons[icon] || HelpCircle
+            return <Icon size={20} />
+        })() : (icon ?? <HelpCircle size={20} />)
+
     const content = (
         <>
             <span className="mb-8 inline-flex items-center justify-center text-black [&_svg]:size-[56px]">
-                {icon}
+                {iconContent}
             </span>
 
             <h3 className="m-0 text-size24 font-bold leading-[1.35] text-black">

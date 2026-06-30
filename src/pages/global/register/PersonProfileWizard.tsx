@@ -7,9 +7,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { ChevronDown, ChevronLeft } from "lucide-react";
+import { ChevronDown, ChevronLeft, Plus, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+import {
+  buildSeekerSignupPayload,
+  readRegisterCredentials,
+  useSignup,
+} from "../../../api";
 import Stepper, {
   type StepType,
 } from "../../../components/global/stepper/Stepper";
@@ -33,13 +38,17 @@ type WizardStepKey =
   | "achievements";
 
 interface PersonWizardProfileData extends PersonProfileData {
+  profilePicture: File | null;
   profileImageName: string;
+  cvFile: File | null;
   cvFileName: string;
 }
 
 const emptyPersonWizardProfileData: PersonWizardProfileData = {
   ...emptyPersonProfileData,
+  profilePicture: null,
   profileImageName: "",
+  cvFile: null,
   cvFileName: "",
 };
 
@@ -58,6 +67,74 @@ const stepperThemeStyle: CSSProperties = {
   ["--secondary" as string]: "#987541",
   ["--inverse-fg" as string]: "#ffffff",
 };
+
+const languageOptions = [
+  { value: "Arabic", label: "العربية" },
+  { value: "English", label: "الإنجليزية" },
+  { value: "French", label: "الفرنسية" },
+  { value: "Spanish", label: "الإسبانية" },
+  { value: "German", label: "الألمانية" },
+  { value: "Italian", label: "الإيطالية" },
+  { value: "Turkish", label: "التركية" },
+  { value: "Chinese", label: "الصينية" },
+  { value: "Japanese", label: "اليابانية" },
+  { value: "Korean", label: "الكورية" },
+  { value: "Russian", label: "الروسية" },
+  { value: "Portuguese", label: "البرتغالية" },
+  { value: "Hindi", label: "الهندية" },
+  { value: "Urdu", label: "الأردية" },
+  { value: "Persian", label: "الفارسية" },
+  { value: "Dutch", label: "الهولندية" },
+  { value: "Swedish", label: "السويدية" },
+  { value: "Greek", label: "اليونانية" },
+  { value: "Polish", label: "البولندية" },
+  { value: "Indonesian", label: "الإندونيسية" },
+];
+
+const languageLevelOptions = [
+  { value: "native", label: "لغة أم" },
+  { value: "fluent", label: "بطلاقة" },
+  { value: "intermediate", label: "متوسط" },
+  { value: "basic", label: "أساسي" },
+];
+
+const defaultLanguageLevel = languageLevelOptions[3]?.value ?? "basic";
+
+interface SelectedLanguage {
+  language: string;
+  level: string;
+}
+
+function parseSelectedLanguages(value: string): SelectedLanguage[] {
+  return value
+    .split(",")
+    .map((item) => {
+      const [language = "", level = ""] = item
+        .split(":")
+        .map((part) => part.trim());
+
+      return {
+        language,
+        level: languageLevelOptions.some((option) => option.value === level)
+          ? level
+          : defaultLanguageLevel,
+      };
+    })
+    .filter((item) => item.language);
+}
+
+function serializeSelectedLanguages(languages: SelectedLanguage[]) {
+  return languages
+    .map((item) => `${item.language}:${item.level || defaultLanguageLevel}`)
+    .join(", ");
+}
+
+function getLanguageLabel(language: string) {
+  return (
+    languageOptions.find((option) => option.value === language)?.label ??
+    language
+  );
+}
 
 function FieldLabel({
   label,
@@ -90,6 +167,12 @@ function PersonProfileWizard() {
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [submissionError, setSubmissionError] = useState("");
+  const [selectedLanguage, setSelectedLanguage] = useState("");
+  const [selectedLanguageLevel, setSelectedLanguageLevel] = useState(
+    defaultLanguageLevel,
+  );
+  const signupMutation = useSignup();
   const [formData, setFormData] = useState<PersonWizardProfileData>(() =>
     readStoredProfile<PersonWizardProfileData>(
       personProfileEditorConfig.storageKey,
@@ -106,6 +189,20 @@ function PersonProfileWizard() {
     [],
   );
 
+  const selectedLanguages = useMemo(
+    () => parseSelectedLanguages(formData.languages),
+    [formData.languages],
+  );
+
+  const availableLanguageOptions = useMemo(
+    () =>
+      languageOptions.filter(
+        (option) =>
+          !selectedLanguages.some((item) => item.language === option.value),
+      ),
+    [selectedLanguages],
+  );
+
   const updateField = <K extends keyof PersonWizardProfileData>(
     field: K,
     value: PersonWizardProfileData[K],
@@ -116,11 +213,49 @@ function PersonProfileWizard() {
     }));
   };
 
+  const updateLanguages = (languages: SelectedLanguage[]) => {
+    updateField("languages", serializeSelectedLanguages(languages));
+  };
+
+  const handleAddLanguage = () => {
+    if (!selectedLanguage) {
+      return;
+    }
+
+    updateLanguages([
+      ...selectedLanguages,
+      {
+        language: selectedLanguage,
+        level: selectedLanguageLevel,
+      },
+    ]);
+    setSelectedLanguage("");
+    setSelectedLanguageLevel(defaultLanguageLevel);
+  };
+
+  const handleLanguageLevelChange = (language: string, level: string) => {
+    updateLanguages(
+      selectedLanguages.map((item) =>
+        item.language === language ? { ...item, level } : item,
+      ),
+    );
+  };
+
+  const handleRemoveLanguage = (language: string) => {
+    updateLanguages(
+      selectedLanguages.filter((item) => item.language !== language),
+    );
+  };
+
   const handleFileSelection =
     (field: "profileImageName" | "cvFileName") =>
     (event: ChangeEvent<HTMLInputElement>) => {
-      const selectedFile = event.target.files?.[0];
+      const selectedFile = event.target.files?.[0] ?? null;
       updateField(field, selectedFile?.name ?? "");
+      updateField(
+        field === "profileImageName" ? "profilePicture" : "cvFile",
+        selectedFile,
+      );
 
       if (field !== "profileImageName" || !selectedFile) {
         return;
@@ -140,9 +275,35 @@ function PersonProfileWizard() {
     };
 
   useEffect(() => {
-    writeStoredProfile<PersonWizardProfileData>(
+    writeStoredProfile<PersonProfileData & {
+      profileImageName: string;
+      cvFileName: string;
+    }>(
       personProfileEditorConfig.storageKey,
-      formData,
+      {
+        fullName: formData.fullName,
+        gender: formData.gender,
+        birthDate: formData.birthDate,
+        phone: formData.phone,
+        country: formData.country,
+        city: formData.city,
+        address: formData.address,
+        jobLevel: formData.jobLevel,
+        yearsExperience: formData.yearsExperience,
+        lastCompany: formData.lastCompany,
+        workType: formData.workType,
+        latestDegree: formData.latestDegree,
+        specialization: formData.specialization,
+        university: formData.university,
+        graduationYear: formData.graduationYear,
+        languages: formData.languages,
+        topAchievement: formData.topAchievement,
+        portfolioLink: formData.portfolioLink,
+        professionalProfile: formData.professionalProfile,
+        projectSummary: formData.projectSummary,
+        profileImageName: formData.profileImageName,
+        cvFileName: formData.cvFileName,
+      },
     );
     notifyPortalProfileUpdate("user");
   }, [formData]);
@@ -157,8 +318,55 @@ function PersonProfileWizard() {
     setCurrentStep((current) => Math.max(current - 1, 0));
   };
 
-  const handleFinish = () => {
-    setIsCompleted(true);
+  const handleFinish = async () => {
+    const credentials = readRegisterCredentials();
+
+    if (!credentials) {
+      navigate("/register");
+      return;
+    }
+
+    setSubmissionError("");
+
+    const submissionLanguages = selectedLanguage
+      ? [
+          ...selectedLanguages,
+          {
+            language: selectedLanguage,
+            level: selectedLanguageLevel,
+          },
+        ]
+      : selectedLanguages;
+
+    if (submissionLanguages.length === 0) {
+      setSubmissionError("يرجى اختيار لغة واحدة على الأقل قبل إنشاء الحساب.");
+      return;
+    }
+
+    if (!formData.profilePicture) {
+      setSubmissionError("يرجى اختيار صورة شخصية قبل إنشاء الحساب.");
+      return;
+    }
+
+    const submissionData = {
+      ...formData,
+      languages: serializeSelectedLanguages(submissionLanguages),
+    };
+
+    try {
+      await signupMutation.mutateAsync(
+        buildSeekerSignupPayload(credentials, submissionData),
+      );
+      setIsCompleted(true);
+      navigate("/");
+    } catch (error) {
+      setIsCompleted(false);
+      setSubmissionError(
+        error instanceof Error
+          ? error.message
+          : "تعذر إنشاء الحساب، يرجى المحاولة مرة أخرى.",
+      );
+    }
   };
 
   const currentStepKey = wizardSteps[currentStep]?.key;
@@ -356,13 +564,99 @@ function PersonProfileWizard() {
           <FieldLabel
             label="اللغات (مع مستوى كل لغة)"
             required
-            className="xl:col-span-2"
+            className="md:col-span-2 xl:col-span-3"
           >
-            <input
-              value={formData.languages}
-              onChange={(event) => updateField("languages", event.target.value)}
-              className={inputClassName}
-            />
+            <div className="space-y-3">
+              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto]">
+                <div className="relative">
+                  <select
+                    value={selectedLanguage}
+                    onChange={(event) => setSelectedLanguage(event.target.value)}
+                    className={cn(inputClassName, "appearance-none pe-10")}
+                  >
+                    <option value="">اختر اللغة</option>
+                    {availableLanguageOptions.map((language) => (
+                      <option key={language.value} value={language.value}>
+                        {language.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#a2a6ae]" />
+                </div>
+
+                <div className="relative">
+                  <select
+                    value={selectedLanguageLevel}
+                    onChange={(event) =>
+                      setSelectedLanguageLevel(event.target.value)
+                    }
+                    className={cn(inputClassName, "appearance-none pe-10")}
+                  >
+                    {languageLevelOptions.map((level) => (
+                      <option key={level.value} value={level.value}>
+                        {level.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#a2a6ae]" />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddLanguage}
+                  disabled={!selectedLanguage}
+                  className="inline-flex h-[48px] min-w-[120px] cursor-pointer items-center justify-center gap-2 rounded-[12px] bg-[#5faa73] px-5 text-size16 font-medium text-white transition duration-200 hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Plus className="size-4" />
+                  إضافة
+                </button>
+              </div>
+
+              {selectedLanguages.length > 0 ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {selectedLanguages.map((item) => (
+                    <div
+                      key={item.language}
+                      className="flex items-center gap-3 rounded-[12px] border border-[#d6dae1] bg-white px-3 py-2"
+                    >
+                      <span className="min-w-[96px] flex-1 text-right text-size16 font-medium text-[#34363d]">
+                        {getLanguageLabel(item.language)}
+                      </span>
+
+                      <select
+                        value={item.level}
+                        onChange={(event) =>
+                          handleLanguageLevelChange(
+                            item.language,
+                            event.target.value,
+                          )
+                        }
+                        className="h-10 min-w-[120px] rounded-[10px] border border-[#b8bec6] bg-white px-3 text-right text-size14 text-[#34363d] outline-none transition duration-200 focus:border-[var(--main-color)]"
+                      >
+                        {languageLevelOptions.map((level) => (
+                          <option key={level.value} value={level.value}>
+                            {level.label}
+                          </option>
+                        ))}
+                      </select>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveLanguage(item.language)}
+                        className="inline-flex size-9 cursor-pointer items-center justify-center rounded-[10px] text-[#c96868] transition duration-200 hover:bg-[#fff0f0]"
+                        aria-label="حذف اللغة"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-right text-size14 text-[#70757d]">
+                  يمكنك إضافة أكثر من لغة وتحديد مستوى مختلف لكل واحدة.
+                </p>
+              )}
+            </div>
           </FieldLabel>
         </div>
       );
@@ -482,6 +776,12 @@ function PersonProfileWizard() {
                 </div>
               ) : null}
 
+              {submissionError ? (
+                <div className="rounded-[14px] border border-[#c96868] bg-[#fff0f0] px-4 py-3 text-right text-size16 text-[#9d3434]">
+                  {submissionError}
+                </div>
+              ) : null}
+
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div className="flex items-center gap-3">
                   {currentStep > 0 ? (
@@ -501,7 +801,8 @@ function PersonProfileWizard() {
                         ? handleFinish
                         : handleNextStep
                     }
-                    className="min-w-[140px] cursor-pointer rounded-[10px] bg-[#5faa73] px-6 py-3 text-size18 font-medium text-white transition duration-200 hover:brightness-95"
+                    disabled={signupMutation.isPending}
+                    className="min-w-[140px] cursor-pointer rounded-[10px] bg-[#5faa73] px-6 py-3 text-size18 font-medium text-white transition duration-200 hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {currentStep === wizardSteps.length - 1 ? "إنهاء" : "التالي"}
                   </button>

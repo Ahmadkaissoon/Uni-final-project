@@ -16,7 +16,7 @@ const DialogPositioner = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
     <div
         className={cn(
-            "portal-dialog-positioner pointer-events-none fixed inset-0 z-[39] flex items-center justify-center overflow-y-auto p-4 sm:p-6",
+            "portal-dialog-positioner pointer-events-none fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto p-4 sm:p-6",
             className,
         )}
         {...props}
@@ -31,7 +31,7 @@ const DialogOverlay = React.forwardRef<
     <DialogPrimitive.Overlay
         ref={ref}
         className={cn(
-            "portal-dialog-overlay fixed inset-0 z-[30] bg-black/40 backdrop-blur-[1px]",
+            "portal-dialog-overlay fixed inset-0 z-[60] bg-black/40 backdrop-blur-[1px]",
             className,
         )}
         {...props}

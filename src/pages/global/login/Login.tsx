@@ -1,7 +1,9 @@
 import { type FormEvent, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
+import { resolveAuthRedirect, useLogin } from "../../../api";
+import { demoCurrentAdminCredentials } from "../../../api/adminManagers";
 import blueLogo from "../../../assets/icons/blue_logo.png";
 
 const DEMO_RESET_EMAIL = "ahmad.kaissoon@gamil.com";
@@ -26,25 +28,51 @@ function Login({
   onForgotPassword,
 }: LoginProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const loginMutation = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isBusy = isLoading || isSubmitting;
+  const isBusy = isLoading || isSubmitting || loginMutation.isPending;
+  const redirectPath = searchParams.get("redirect");
+  const safeRedirectPath =
+    redirectPath?.startsWith("/") && !redirectPath.startsWith("//")
+      ? redirectPath
+      : null;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!onSubmit) {
+    if (!email.trim() || !password) {
       return;
     }
 
     try {
       setIsSubmitting(true);
-      await onSubmit({
+      if (onSubmit) {
+        await onSubmit({
+          email: email.trim(),
+          password,
+        });
+        return;
+      }
+
+      if (
+        email.trim().toLowerCase() === demoCurrentAdminCredentials.email &&
+        password === demoCurrentAdminCredentials.password
+      ) {
+        navigate("/admin");
+        return;
+      }
+
+      const response = await loginMutation.mutateAsync({
         email: email.trim(),
         password,
+      });
+      navigate(safeRedirectPath ?? resolveAuthRedirect(response), {
+        replace: true,
       });
     } finally {
       setIsSubmitting(false);

@@ -1,103 +1,15 @@
-import {
-    BarChart3,
-    BriefcaseBusiness,
-    Calculator,
-    Camera,
-    ChartNoAxesColumn,
-    CodeXml,
-    Headset,
-    Languages,
-    Lightbulb,
-    NotebookText,
-    Palette,
-    Plus,
-    Scissors,
-} from "lucide-react"
+import { Plus } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
 import { Button } from "../global/ui/button"
 import type { PortalCategoryItem } from "./PortalJobCategoriesSection"
 import PortalCategoryCard from "./PortalCategoryCard"
 import PortalCategoryCardSkeleton from "./PortalCategoryCardSkeleton"
+import { usePortalJobCategories } from "../../api/portalJobs"
 
 type LoadingMode = "initial" | "more" | null
 
 const LOAD_DELAY_MS = 1500
-
-const allCategories: PortalCategoryItem[] = [
-    {
-        id: "design",
-        title: "تصميم",
-        icon: <Palette strokeWidth={2.25} />,
-        to: "/jobs/categories?category=design",
-    },
-    {
-        id: "development",
-        title: "برمجة",
-        icon: <CodeXml strokeWidth={2.25} />,
-        to: "/jobs/categories?category=development",
-    },
-    {
-        id: "editing",
-        title: "مونتاج",
-        icon: <Scissors strokeWidth={2.25} />,
-        to: "/jobs/categories?category=editing",
-    },
-    {
-        id: "social-media",
-        title: "إدارة صفحات",
-        icon: <Lightbulb strokeWidth={2.25} />,
-        to: "/jobs/categories?category=social-media",
-    },
-    {
-        id: "content-writing",
-        title: "كتابة محتوى",
-        icon: <NotebookText strokeWidth={2.25} />,
-        to: "/jobs/categories?category=content-writing",
-    },
-    {
-        id: "marketing",
-        title: "تسويق",
-        icon: <ChartNoAxesColumn strokeWidth={2.25} />,
-        to: "/jobs/categories?category=marketing",
-    },
-    {
-        id: "project-management",
-        title: "إدارة مشاريع",
-        icon: <BriefcaseBusiness strokeWidth={2.25} />,
-        to: "/jobs/categories?category=project-management",
-    },
-    {
-        id: "translation",
-        title: "ترجمة",
-        icon: <Languages strokeWidth={2.25} />,
-        to: "/jobs/categories?category=translation",
-    },
-    {
-        id: "data-analysis",
-        title: "تحليل بيانات",
-        icon: <BarChart3 strokeWidth={2.25} />,
-        to: "/jobs/categories?category=data-analysis",
-    },
-    {
-        id: "customer-support",
-        title: "خدمة عملاء",
-        icon: <Headset strokeWidth={2.25} />,
-        to: "/jobs/categories?category=customer-support",
-    },
-    {
-        id: "accounting",
-        title: "محاسبة",
-        icon: <Calculator strokeWidth={2.25} />,
-        to: "/jobs/categories?category=accounting",
-    },
-    {
-        id: "photography",
-        title: "تصوير",
-        icon: <Camera strokeWidth={2.25} />,
-        to: "/jobs/categories?category=photography",
-    },
-]
 
 interface PortalAllJobCategoriesSectionProps {
     title?: string
@@ -109,18 +21,18 @@ interface PortalAllJobCategoriesSectionProps {
 export default function PortalAllJobCategoriesSection({
     title = "كافة تصنيفات الوظائف",
     description = "اكتشف أفضل الفرص المناسبة لك وابدأ بعرض خدماتك على الشركات",
-    categories = allCategories,
     itemsPerPage = 6,
 }: PortalAllJobCategoriesSectionProps) {
     const [visiblePages, setVisiblePages] = useState(1)
     const [loadingMode, setLoadingMode] = useState<LoadingMode>("initial")
     const timeoutRef = useRef<number | null>(null)
-
+    const JobCategories = usePortalJobCategories()
+    const categories = JobCategories.data?.data ?? []
     const visibleCount = Math.min(
         categories.length,
         visiblePages * itemsPerPage,
     )
-    const visibleCategories = categories.slice(0, visibleCount)
+    const visibleCategories = JobCategories.data?.data?.slice(0, visibleCount)
     const canShowMore = visibleCount < categories.length
     const loadingSkeletonCount =
         loadingMode === "more"
@@ -184,7 +96,7 @@ export default function PortalAllJobCategoriesSection({
                     </div>
 
                     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-10 xl:px-[89px]">
-                        {loadingMode === "initial"
+                        {JobCategories.isLoading
                             ? Array.from({ length: loadingSkeletonCount }).map(
                                   (_, index) => (
                                       <PortalCategoryCardSkeleton
@@ -192,15 +104,12 @@ export default function PortalAllJobCategoriesSection({
                                       />
                                   ),
                               )
-                            : visibleCategories.map((category) => (
+                            : visibleCategories?.map((category) => (
                                   <PortalCategoryCard
-                                      key={category.id}
-                                      title={category.title}
+                                      key={category._id}
+                                      title={category.name}
                                       icon={category.icon}
-                                      to={category.to}
-                                      href={category.href}
-                                      target={category.target}
-                                      rel={category.rel}
+                                      to={`/jobs/categories/${category._id}`}
                                   />
                               ))}
 
