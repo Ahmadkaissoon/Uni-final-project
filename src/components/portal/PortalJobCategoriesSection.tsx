@@ -1,90 +1,71 @@
-import {
-    ChartNoAxesColumn,
-    CodeXml,
-    Lightbulb,
-    NotebookText,
-    Palette,
-    Plus,
-    Scissors,
-} from "lucide-react"
-import { useMemo, useState, type ReactNode } from "react"
+import { Plus } from "lucide-react"
+import { useMemo, type ReactNode } from "react"
 
+import { usePortalJobCategories } from "../../api/portalJobs"
 import { Button } from "../global/ui/button"
 import PortalCategoryCard from "./PortalCategoryCard"
+import PortalCategoryCardSkeleton from "./PortalCategoryCardSkeleton"
 
 export interface PortalCategoryItem {
     id: string
     title: string
-    icon: ReactNode
+    icon: string | ReactNode
     to?: string
     href?: string
     target?: string
     rel?: string
 }
 
-const defaultCategories: PortalCategoryItem[] = [
-    {
-        id: "design",
-        title: "تصميم",
-        icon: <Palette strokeWidth={2.25} />,
-        to: "/jobs/categories?category=design",
-    },
-    {
-        id: "development",
-        title: "برمجة",
-        icon: <CodeXml strokeWidth={2.25} />,
-        to: "/jobs/categories?category=development",
-    },
-    {
-        id: "editing",
-        title: "مونتاج",
-        icon: <Scissors strokeWidth={2.25} />,
-        to: "/jobs/categories?category=editing",
-    },
-    {
-        id: "social-media",
-        title: "ادارة صفحات",
-        icon: <Lightbulb strokeWidth={2.25} />,
-        to: "/jobs/categories?category=social-media",
-    },
-    {
-        id: "content-writing",
-        title: "كتابة محتوى",
-        icon: <NotebookText strokeWidth={2.25} />,
-        to: "/jobs/categories?category=content-writing",
-    },
-    {
-        id: "marketing",
-        title: "تسويق",
-        icon: <ChartNoAxesColumn strokeWidth={2.25} />,
-        to: "/jobs/categories?category=marketing",
-    },
-]
+interface ApiPortalCategory {
+    _id: string
+    name: string
+    icon: string
+}
 
 interface PortalJobCategoriesSectionProps {
     title?: string
     categories?: PortalCategoryItem[]
     onCategoryClick?: (categoryId: string) => void
     onShowMore?: () => void
-    itemsPerPage?: number
+    itemsLimit?: number
+    emptyText?: string
+}
+
+function mapApiCategoryToPortalCategoryItem(
+    category: ApiPortalCategory,
+): PortalCategoryItem {
+    return {
+        id: category._id,
+        title: category.name,
+        icon: category.icon,
+        to: `/jobs/categories/${category._id}`,
+    }
 }
 
 export default function PortalJobCategoriesSection({
     title = "وظائف حسب الفئة",
-    categories = defaultCategories,
+    categories,
     onCategoryClick,
     onShowMore,
-    itemsPerPage = 6,
+    itemsLimit = 6,
+    emptyText = "لا توجد تصنيفات متاحة حالياً.",
 }: PortalJobCategoriesSectionProps) {
-    const [currentPage, setCurrentPage] = useState(1)
+    const categoriesQuery = usePortalJobCategories()
+    const usesExternalCategories = categories !== undefined
 
-    const totalPages = Math.max(1, Math.ceil(categories.length / itemsPerPage))
-    const safeCurrentPage = Math.min(currentPage, totalPages)
+    const resolvedCategories = useMemo(() => {
+        if (usesExternalCategories) {
+            return categories ?? []
+        }
 
-    const paginatedCategories = useMemo(() => {
-        const startIndex = (safeCurrentPage - 1) * itemsPerPage
-        return categories.slice(startIndex, startIndex + itemsPerPage)
-    }, [categories, safeCurrentPage, itemsPerPage])
+        const apiCategories = (categoriesQuery.data?.data ?? []) as ApiPortalCategory[]
+
+        return apiCategories.map(mapApiCategoryToPortalCategoryItem)
+    }, [categories, categoriesQuery.data?.data, usesExternalCategories])
+
+    const visibleCategories = resolvedCategories.slice(0, itemsLimit)
+    const isLoading = !usesExternalCategories && categoriesQuery.isLoading
+    const isError = !usesExternalCategories && categoriesQuery.isError
 
     return (
         <section className="my-12 sm:pm-16" dir="rtl">
@@ -92,7 +73,7 @@ export default function PortalJobCategoriesSection({
                 <div className="portal-design-inset">
                     <div className="mb-10 flex justify-start sm:mb-12">
                         <div className="inline-flex flex-col items-start">
-                            <h2 className="m-0 text-[28px] font-bold leading-[1.3] text-black sm:text-[32px] mx-[10px]">
+                            <h2 className="mx-[10px] m-0 text-[28px] font-bold leading-[1.3] text-black sm:text-[32px]">
                                 {title}
                             </h2>
                             <span className="mt-4 block h-[3px] w-full rounded-full bg-warning-color" />
@@ -100,108 +81,59 @@ export default function PortalJobCategoriesSection({
                     </div>
 
                     <div className="grid gap-5 xl:px-[89px] sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
-                        {paginatedCategories.map((category) => (
-                            <PortalCategoryCard
-                                key={category.id}
-                                title={category.title}
-                                icon={category.icon}
-                                to={category.to}
-                                href={category.href}
-                                target={category.target}
-                                rel={category.rel}
-                                onClick={
-                                    onCategoryClick
-                                        ? () => onCategoryClick(category.id)
-                                        : undefined
-                                }
-                            />
-                        ))}
+                        {isLoading
+                            ? Array.from({ length: itemsLimit }).map((_, index) => (
+                                  <PortalCategoryCardSkeleton
+                                      key={`home-category-skeleton-${index + 1}`}
+                                  />
+                              ))
+                            : visibleCategories.length > 0
+                              ? visibleCategories.map((category) => (
+                                    <PortalCategoryCard
+                                        key={category.id}
+                                        title={category.title}
+                                        icon={category.icon}
+                                        to={category.to}
+                                        href={category.href}
+                                        target={category.target}
+                                        rel={category.rel}
+                                        onClick={
+                                            onCategoryClick
+                                                ? () => onCategoryClick(category.id)
+                                                : undefined
+                                        }
+                                    />
+                                ))
+                              : (
+                                  <div className="portal-category-card-shadow col-span-full rounded-[20px] bg-white px-6 py-12 text-center">
+                                      <p className="m-0 text-size18 font-bold text-black">
+                                          {isError
+                                              ? "تعذر تحميل التصنيفات حالياً، يرجى المحاولة لاحقاً."
+                                              : emptyText}
+                                      </p>
+                                  </div>
+                              )}
                     </div>
 
-                    {totalPages > 1 ? (
-                        <div className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:mt-10">
+                    {onShowMore ? (
+                        <div className="mt-8 flex justify-center sm:mt-10">
                             <Button
                                 type="button"
                                 variant="panel"
                                 size="normal"
-                                onClick={() =>
-                                    setCurrentPage(
-                                        Math.max(1, safeCurrentPage - 1),
-                                    )
-                                }
-                                disabled={safeCurrentPage === 1}
-                                className="rounded-[10px] border border-warning-color bg-white !px-4 !py-2 !text-size16 !font-bold !text-warning-color hover:!bg-warning-color hover:!text-white disabled:opacity-50"
+                                onClick={onShowMore}
+                                className="inline-flex items-center rounded-[8px] border border-warning-color bg-warning-color !px-4 !py-2 !text-size18 !font-bold !text-white hover:!brightness-105"
+                                dir="rtl"
                             >
-                                السابق
-                            </Button>
-
-                            <div className="flex flex-wrap items-center justify-center gap-2">
-                                {Array.from(
-                                    { length: totalPages },
-                                    (_, index) => {
-                                        const pageNumber = index + 1
-                                        const isActive =
-                                            pageNumber === safeCurrentPage
-
-                                        return (
-                                            <Button
-                                                key={pageNumber}
-                                                type="button"
-                                                variant="panel"
-                                                size="normal"
-                                                onClick={() =>
-                                                    setCurrentPage(pageNumber)
-                                                }
-                                                className={
-                                                    isActive
-                                                        ? "rounded-[10px] border border-warning-color bg-warning-color !px-4 !py-2 !text-size16 !font-bold !text-white"
-                                                        : "rounded-[10px] border border-warning-color bg-white !px-4 !py-2 !text-size16 !font-bold !text-warning-color hover:!bg-warning-color hover:!text-white"
-                                                }
-                                            >
-                                                {pageNumber}
-                                            </Button>
-                                        )
-                                    },
-                                )}
-                            </div>
-
-                            <Button
-                                type="button"
-                                variant="panel"
-                                size="normal"
-                                onClick={() =>
-                                    setCurrentPage(
-                                        Math.min(
-                                            totalPages,
-                                            safeCurrentPage + 1,
-                                        ),
-                                    )
-                                }
-                                disabled={safeCurrentPage === totalPages}
-                                className="rounded-[10px] border border-warning-color bg-white !px-4 !py-2 !text-size16 !font-bold !text-warning-color hover:!bg-warning-color hover:!text-white disabled:opacity-50"
-                            >
-                                التالي
+                                <span className="ml-3 inline-flex items-center justify-center rounded-full border-2 border-white p-1">
+                                    <Plus className="size-5" />
+                                </span>
+                                <span className="inline-flex items-center">
+                                    عرض المزيد
+                                </span>
                             </Button>
                         </div>
                     ) : null}
-
-                    <div className="mt-8 flex justify-center sm:mt-10">
-                        <Button
-                            type="button"
-                            variant="panel"
-                            size="normal"
-                            onClick={onShowMore}
-                            className="inline-flex items-center rounded-[8px] border border-warning-color bg-warning-color !px-4 !py-2 !text-size18 !font-bold !text-white hover:!brightness-105"
-                            dir="rtl"
-                        >
-                            <span className="ml-3 inline-flex items-center justify-center rounded-full border-2 border-white p-1">
-                                <Plus className="size-5" />
-                            </span>
-                            <span className="inline-flex items-center">
-                                عرض المزيد
-                            </span>
-                        </Button>
-                    </div>
                 </div>
             </div>
         </section>

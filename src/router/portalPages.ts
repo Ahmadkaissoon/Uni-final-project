@@ -1,3 +1,5 @@
+import { matchPath } from "react-router-dom";
+
 import type { PortalRole } from "../components/layout/PortalLayout";
 
 export interface PortalProfile {
@@ -84,6 +86,20 @@ export const userPortalPages: PortalPageDefinition[] = [
       "مناسبة لبطاقات التصنيفات أو الـ tags.",
       "يمكن منها التوجيه إلى صفحات فرعية أكثر تخصصًا.",
       "يبقى الـ header مفعّلًا على تبويب الوظائف تلقائيًا.",
+    ],
+  },
+  {
+    id: "category-jobs",
+    path: "/jobs/categories/:id",
+    role: "user",
+    title: "وظائف التصنيف",
+    eyebrow: "وظائف المستخدم",
+    description:
+      "صفحة تعرض الوظائف المرتبطة بتصنيف محدد، وتناسب استعراض الفرص المتاحة ضمن هذا المجال.",
+    highlights: [
+      "تعتمد على معرّف التصنيف ضمن المسار لجلب الوظائف من الـ API.",
+      "يمكن إعادة استخدام نفس تصميم صفحة كافة الوظائف مع تغيير البيانات فقط.",
+      "يبقى تبويب الوظائف مفعّلًا داخل الهيدر تلقائيًا.",
     ],
   },
   {
@@ -419,7 +435,13 @@ export const portalPagesByRole: Record<PortalRole, PortalPageDefinition[]> = {
 };
 
 export function getPortalPageByPath(role: PortalRole, path: string) {
-  return portalPagesByRole[role].find((page) => page.path === path);
+  return portalPagesByRole[role].find((page) => {
+    if (page.path === path) {
+      return true;
+    }
+
+    return Boolean(matchPath({ path: page.path, end: true }, path));
+  });
 }
 
 export function getPortalPageById(role: PortalRole, pageId: string) {

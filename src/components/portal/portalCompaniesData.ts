@@ -7,15 +7,37 @@ export interface PortalCompanyDirectoryItem {
     logoSrc?: string
     logoAlt?: string
     logoLabel?: string
+    sector?: string
+    numberOfEmployees?: number
+    country?: string
+    city?: string
+    address?: string
+    companyPhone?: string
+    companyEmail?: string
+    hrManagerName?: string
+    jobTypes?: string[]
+    monthlyJobPostsPlanned?: number
+    companyRecommendations?: string
+    licenseUrl?: string
+    matchKeys?: string[]
     to: string
 }
 
-export function normalizePortalCompanyValue(value: string) {
-    return value.trim().toLowerCase().replace(/\s+/g, "-")
+export function normalizePortalCompanyValue(value?: string | null) {
+    return `${value ?? ""}`
+        .trim()
+        .toLowerCase()
+        .replace(/^https?:\/\//i, "")
+        .replace(/\/$/, "")
+        .replace(/\s+/g, "-")
 }
 
-function buildPortalCompanyPath(companyValue: string) {
+export function buildPortalCompanyJobsPath(companyValue: string) {
     return `/jobs/all?company=${encodeURIComponent(companyValue)}`
+}
+
+export function buildPortalCompanyDetailsPath(companyId: string) {
+    return `/companies/all?company=${encodeURIComponent(companyId)}`
 }
 
 const companiesById = new Map<string, PortalCompanyDirectoryItem>()
@@ -36,7 +58,8 @@ for (const job of portalJobRecords) {
         logoSrc: job.logoSrc,
         logoAlt: job.logoAlt ?? job.companyName,
         logoLabel: job.logoLabel,
-        to: buildPortalCompanyPath(companyId),
+        matchKeys: [companyId],
+        to: buildPortalCompanyJobsPath(companyId),
     })
 }
 

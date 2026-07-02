@@ -1,74 +1,18 @@
 import type { ComponentType, ReactNode } from "react"
 import ReactSlick, { type Settings } from "react-slick"
 
+import {
+    getPortalCompanyPrimaryMatchKey,
+    usePortalCompanies,
+} from "../../api/portalCompanies"
+import type { PortalCompanyDirectoryItem } from "./portalCompaniesData"
+import { buildPortalCompanyJobsPath } from "./portalCompaniesData"
 import PortalCompanyLogoSlide from "./PortalCompanyLogoSlide"
-
-export interface PortalCompanyCarouselItem {
-    id: string
-    companyName: string
-    logoSrc?: string
-    logoAlt?: string
-    logoLabel?: string
-    to?: string
-    href?: string
-    target?: string
-    rel?: string
-}
-
-const defaultCompanies: PortalCompanyCarouselItem[] = [
-    {
-        id: "google",
-        companyName: "Google",
-        logoLabel: "GO",
-        to: "/jobs/all?company=google",
-    },
-    {
-        id: "microsoft",
-        companyName: "Microsoft",
-        logoLabel: "MS",
-        to: "/jobs/all?company=microsoft",
-    },
-    {
-        id: "amazon",
-        companyName: "Amazon",
-        logoLabel: "AM",
-        to: "/jobs/all?company=amazon",
-    },
-    {
-        id: "meta",
-        companyName: "Meta",
-        logoLabel: "ME",
-        to: "/jobs/all?company=meta",
-    },
-    {
-        id: "adobe",
-        companyName: "Adobe",
-        logoLabel: "AD",
-        to: "/jobs/all?company=adobe",
-    },
-    {
-        id: "spotify",
-        companyName: "Spotify",
-        logoLabel: "SP",
-        to: "/jobs/all?company=spotify",
-    },
-    {
-        id: "netflix",
-        companyName: "Netflix",
-        logoLabel: "NF",
-        to: "/jobs/all?company=netflix",
-    },
-    {
-        id: "oracle",
-        companyName: "Oracle",
-        logoLabel: "OR",
-        to: "/jobs/all?company=oracle",
-    },
-]
+import PortalCompanyLogoSlideSkeleton from "./PortalCompanyLogoSlideSkeleton"
 
 interface PortalCompaniesCarouselSectionProps {
     title?: string
-    companies?: PortalCompanyCarouselItem[]
+    companies?: PortalCompanyDirectoryItem[]
 }
 
 type SlickSliderProps = Settings & {
@@ -128,8 +72,17 @@ const sliderSettings: Settings = {
 
 export default function PortalCompaniesCarouselSection({
     title = "الشركات",
-    companies = defaultCompanies,
+    companies,
 }: PortalCompaniesCarouselSectionProps) {
+    const companiesQuery = usePortalCompanies()
+    const resolvedCompanies = companies ?? companiesQuery.companies
+    const isLoading = companies === undefined && companiesQuery.isLoading
+    const isError = companies === undefined && companiesQuery.isError
+
+    if (!isLoading && resolvedCompanies.length === 0 && !isError) {
+        return null
+    }
+
     return (
         <section className="my-12 sm:my-16" dir="rtl">
             <div className="portal-design-shell">
@@ -143,24 +96,42 @@ export default function PortalCompaniesCarouselSection({
                         </div>
                     </div>
 
-                    <div className="portal-companies-slider">
-                        <SliderComponent {...sliderSettings}>
-                            {companies.map((company) => (
-                                <div key={company.id} className="px-3">
-                                    <PortalCompanyLogoSlide
-                                        companyName={company.companyName}
-                                        logoSrc={company.logoSrc}
-                                        logoAlt={company.logoAlt}
-                                        logoLabel={company.logoLabel}
-                                        to={company.to}
-                                        href={company.href}
-                                        target={company.target}
-                                        rel={company.rel}
-                                    />
-                                </div>
-                            ))}
-                        </SliderComponent>
-                    </div>
+                    {isError ? (
+                        <div className="portal-category-card-shadow rounded-[18px] bg-white px-6 py-10 text-center">
+                            <p className="m-0 text-size18 font-bold text-black">
+                                تعذر تحميل الشركات حالياً، يرجى المحاولة لاحقاً.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="portal-companies-slider">
+                            <SliderComponent {...sliderSettings}>
+                                {isLoading
+                                    ? Array.from({ length: 6 }).map((_, index) => (
+                                          <div
+                                              key={`company-skeleton-${index + 1}`}
+                                              className="px-3"
+                                          >
+                                              <PortalCompanyLogoSlideSkeleton />
+                                          </div>
+                                      ))
+                                    : resolvedCompanies.map((company) => (
+                                          <div key={company.id} className="px-3">
+                                              <PortalCompanyLogoSlide
+                                                  companyName={company.companyName}
+                                                  logoSrc={company.logoSrc}
+                                                  logoAlt={company.logoAlt}
+                                                  logoLabel={company.logoLabel}
+                                                  to={buildPortalCompanyJobsPath(
+                                                      getPortalCompanyPrimaryMatchKey(
+                                                          company,
+                                                      ),
+                                                  )}
+                                              />
+                                          </div>
+                                      ))}
+                            </SliderComponent>
+                        </div>
+                    )}
                 </div>
             </div>
         </section>

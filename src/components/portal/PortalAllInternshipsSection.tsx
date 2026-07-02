@@ -25,6 +25,8 @@ interface PortalAllInternshipsSectionProps {
     description?: string
     internships?: PortalInternshipListingItem[]
     itemsPerPage?: number
+    isLoading?: boolean
+    emptyText?: string
 }
 
 export default function PortalAllInternshipsSection({
@@ -32,10 +34,14 @@ export default function PortalAllInternshipsSection({
     description = "اكتشف أفضل فرص التدريب وقم ببناء تجربة عملية داخل إحدى الشركات الكبرى",
     internships = portalInternshipRecords,
     itemsPerPage = 4,
+    isLoading = false,
+    emptyText = "لا توجد تدريبات متاحة حالياً.",
 }: PortalAllInternshipsSectionProps) {
     const [selectedTrainingType, setSelectedTrainingType] = useState("all")
     const [visiblePages, setVisiblePages] = useState(1)
-    const [loadingMode, setLoadingMode] = useState<LoadingMode>("initial")
+    const [loadingMode, setLoadingMode] = useState<LoadingMode>(
+        isLoading ? null : "initial",
+    )
 
     const timeoutRef = useRef<number | null>(null)
 
@@ -73,6 +79,10 @@ export default function PortalAllInternshipsSection({
             : itemsPerPage
 
     useEffect(() => {
+        if (loadingMode !== "initial") {
+            return
+        }
+
         timeoutRef.current = window.setTimeout(() => {
             setLoadingMode(null)
             timeoutRef.current = null
@@ -83,7 +93,7 @@ export default function PortalAllInternshipsSection({
                 window.clearTimeout(timeoutRef.current)
             }
         }
-    }, [])
+    }, [loadingMode])
 
     function clearLoadingTimeout() {
         if (timeoutRef.current !== null) {
@@ -113,7 +123,7 @@ export default function PortalAllInternshipsSection({
     }
 
     function handleShowMore() {
-        if (!canShowMore || loadingMode !== null) {
+        if (isLoading || !canShowMore || loadingMode !== null) {
             return
         }
 
@@ -121,6 +131,9 @@ export default function PortalAllInternshipsSection({
             setVisiblePages((currentPage) => currentPage + 1)
         })
     }
+
+    const shouldShowInitialSkeletons =
+        isLoading || loadingMode === "initial" || loadingMode === "filter"
 
     return (
         <section className="py-12 sm:py-16 lg:py-20" dir="rtl">
@@ -144,7 +157,7 @@ export default function PortalAllInternshipsSection({
                             <Select
                                 value={safeSelectedTrainingType}
                                 onValueChange={handleTrainingTypeChange}
-                                disabled={loadingMode !== null}
+                                disabled={isLoading || loadingMode !== null}
                             >
                                 <SelectTrigger
                                     currentValue={safeSelectedTrainingType}
@@ -173,7 +186,7 @@ export default function PortalAllInternshipsSection({
                     </div>
 
                     <div className="mx-auto flex w-full max-w-[920px] flex-col gap-6">
-                        {loadingMode === "initial" || loadingMode === "filter"
+                        {shouldShowInitialSkeletons
                             ? Array.from({ length: loadingSkeletonCount }).map(
                                   (_, index) => (
                                       <PortalTrainingOpportunityCardSkeleton
@@ -181,20 +194,28 @@ export default function PortalAllInternshipsSection({
                                       />
                                   ),
                               )
-                            : visibleInternships.map((internship) => (
-                                  <PortalTrainingOpportunityCard
-                                      key={internship.id}
-                                      companyName={internship.companyName}
-                                      trainingType={internship.trainingType}
-                                      logoSrc={internship.logoSrc}
-                                      logoAlt={internship.logoAlt}
-                                      logoLabel={internship.logoLabel}
-                                      to={internship.to}
-                                      href={internship.href}
-                                      target={internship.target}
-                                      rel={internship.rel}
-                                  />
-                              ))}
+                            : visibleInternships.length > 0
+                              ? visibleInternships.map((internship) => (
+                                    <PortalTrainingOpportunityCard
+                                        key={internship.id}
+                                        companyName={internship.companyName}
+                                        trainingType={internship.trainingType}
+                                        logoSrc={internship.logoSrc}
+                                        logoAlt={internship.logoAlt}
+                                        logoLabel={internship.logoLabel}
+                                        to={internship.to}
+                                        href={internship.href}
+                                        target={internship.target}
+                                        rel={internship.rel}
+                                    />
+                                ))
+                              : (
+                                  <div className="portal-category-card-shadow rounded-[18px] bg-white px-6 py-12 text-center">
+                                      <p className="m-0 text-size18 font-bold text-black">
+                                          {emptyText}
+                                      </p>
+                                  </div>
+                              )}
 
                         {loadingMode === "more"
                             ? Array.from({ length: loadingSkeletonCount }).map(
@@ -207,8 +228,9 @@ export default function PortalAllInternshipsSection({
                             : null}
                     </div>
 
-                    {loadingMode === "more" ||
-                    (loadingMode === null && canShowMore) ? (
+                    {!isLoading &&
+                    (loadingMode === "more" ||
+                        (loadingMode === null && canShowMore)) ? (
                         <div className="mt-8 flex justify-center sm:mt-10">
                             <Button
                                 type="button"

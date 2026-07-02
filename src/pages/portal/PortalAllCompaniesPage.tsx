@@ -6,7 +6,12 @@ interface PortalAllCompaniesPageProps {
 }
 
 export default function PortalAllCompaniesPage({
-    page: _page,
+    page,
 }: PortalAllCompaniesPageProps) {
-    return <PortalAllCompaniesSection />
+    return (
+        <PortalAllCompaniesSection
+            title={page.title}
+            description={page.description}
+        />
+    )
 }
