@@ -22,6 +22,9 @@ export interface PortalNearbyJobItem {
 interface PortalNearbyJobsSectionProps {
     title?: string
     jobs?: PortalNearbyJobItem[]
+    isLoading?: boolean
+    isError?: boolean
+    hideWhenEmpty?: boolean
     showMoreLabel?: string
     showMoreTo?: string
     onShowMore?: () => void
@@ -31,6 +34,9 @@ interface PortalNearbyJobsSectionProps {
 export default function PortalNearbyJobsSection({
     title = "وظائف قريبة منك",
     jobs,
+    isLoading: isLoadingProp,
+    isError: isErrorProp,
+    hideWhenEmpty = true,
     showMoreLabel = "عرض المزيد",
     showMoreTo = "/jobs/all",
     onShowMore,
@@ -38,10 +44,11 @@ export default function PortalNearbyJobsSection({
 }: PortalNearbyJobsSectionProps) {
     const nearbyJobsQuery = usePortalNearbyJobs()
     const resolvedJobs = jobs ?? nearbyJobsQuery.jobs
-    const isLoading = jobs === undefined && nearbyJobsQuery.isLoading
-    const isError = jobs === undefined && nearbyJobsQuery.isError
+    const isLoading =
+        jobs === undefined ? nearbyJobsQuery.isLoading : Boolean(isLoadingProp)
+    const isError = jobs === undefined ? nearbyJobsQuery.isError : Boolean(isErrorProp)
 
-    if (!isLoading && resolvedJobs.length === 0 && !isError) {
+    if (hideWhenEmpty && !isLoading && resolvedJobs.length === 0 && !isError) {
         return null
     }
 
@@ -87,7 +94,7 @@ export default function PortalNearbyJobsSection({
                                   <div className="portal-category-card-shadow rounded-[18px] bg-white px-6 py-12 text-center">
                                       <p className="m-0 text-size18 font-bold text-black">
                                           {isError
-                                              ? "تعذر تحميل الوظائف القريبة حالياً، يرجى المحاولة لاحقاً."
+                                              ? "تعذر تحميل الوظائف حالياً، يرجى المحاولة لاحقاً."
                                               : emptyText}
                                       </p>
                                   </div>

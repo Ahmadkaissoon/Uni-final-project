@@ -1,5 +1,5 @@
 import { Save, SendHorizontal, Undo2 } from "lucide-react"
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useState, type FormEvent } from "react"
 
 import { Button } from "../global/ui/button"
 import {
@@ -11,6 +11,13 @@ import {
 import type { CompanyJobFormData } from "./companyForms/companyJobFormModel"
 import { emptyCompanyJobFormData } from "./companyForms/companyJobFormModel"
 
+interface SelectOption {
+    value: string
+    label: string
+}
+
+export type PortalCompanyJobFormMode = "free" | "backend-constrained"
+
 interface PortalCompanyJobFormProps {
     title?: string
     description?: string
@@ -19,7 +26,104 @@ interface PortalCompanyJobFormProps {
     submitLabel?: string
     resetLabel?: string
     submitAction?: "send" | "save"
-    onSubmit: (formData: CompanyJobFormData) => void
+    isSubmitting?: boolean
+    mode?: PortalCompanyJobFormMode
+    categoryOptions?: string[]
+    isCategoryOptionsLoading?: boolean
+    categoryOptionsErrorMessage?: string
+    onSubmit: (formData: CompanyJobFormData) => void | Promise<void>
+}
+
+const constrainedWorkModeOptions: SelectOption[] = [
+    { value: "full_time", label: "دوام كامل" },
+    { value: "part_time", label: "دوام جزئي" },
+    { value: "contract", label: "عقد" },
+    { value: "temporary", label: "مؤقت" },
+    { value: "internship", label: "تدريب" },
+]
+
+const constrainedJobTypeOptions: SelectOption[] = [
+    { value: "onsite", label: "ضمن الشركة" },
+    { value: "remotely", label: "عن بعد" },
+    { value: "hybrid", label: "هجين" },
+]
+
+const constrainedEnglishLevelOptions: SelectOption[] = [
+    { value: "A1", label: "A1" },
+    { value: "A2", label: "A2" },
+    { value: "B1", label: "B1" },
+    { value: "B2", label: "B2" },
+    { value: "C1", label: "C1" },
+    { value: "C2", label: "C2" },
+]
+
+const constrainedSeniorityOptions: SelectOption[] = [
+    { value: "entry", label: "مبتدئ" },
+    { value: "junior", label: "جونيور" },
+    { value: "senior", label: "سينيور" },
+    { value: "lead", label: "قائد فريق" },
+    { value: "manager", label: "مدير" },
+]
+
+const constrainedEducationOptions: SelectOption[] = [
+    { value: "High School", label: "ثانوية" },
+    { value: "Diploma", label: "دبلوم" },
+    { value: "Bachelor", label: "بكالوريوس" },
+    { value: "Master", label: "ماجستير" },
+    { value: "PhD", label: "دكتوراه" },
+]
+
+const constrainedResumeLanguageOptions: SelectOption[] = [
+    { value: "Arabic", label: "العربية" },
+    { value: "English", label: "الإنجليزية" },
+    { value: "French", label: "الفرنسية" },
+]
+
+interface SelectFieldProps<K extends keyof CompanyJobFormData> {
+    field: K
+    label: string
+    value: CompanyJobFormData[K]
+    options: SelectOption[]
+    isDisabled?: boolean
+    helperText?: string
+    onChange: (field: K, value: CompanyJobFormData[K]) => void
+}
+
+function CompanySelectField<K extends keyof CompanyJobFormData>({
+    field,
+    label,
+    value,
+    options,
+    isDisabled = false,
+    helperText,
+    onChange,
+}: SelectFieldProps<K>) {
+    return (
+        <CompanyFieldLabel label={label}>
+            <select
+                value={value}
+                onChange={(event) =>
+                    onChange(field, event.target.value as CompanyJobFormData[K])
+                }
+                disabled={isDisabled}
+                required
+                className={companyFormInputClassName}
+            >
+                <option value="">اختر من القائمة</option>
+                {options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                        {option.label}
+                    </option>
+                ))}
+            </select>
+
+            {helperText ? (
+                <span className="text-size13 font-medium text-[#5f6d82]">
+                    {helperText}
+                </span>
+            ) : null}
+        </CompanyFieldLabel>
+    )
 }
 
 export default function PortalCompanyJobForm({
@@ -30,6 +134,11 @@ export default function PortalCompanyJobForm({
     submitLabel = "إرسال الطلب",
     resetLabel = "إعادة تعيين",
     submitAction = "send",
+    isSubmitting = false,
+    mode = "free",
+    categoryOptions = [],
+    isCategoryOptionsLoading = false,
+    categoryOptionsErrorMessage,
     onSubmit,
 }: PortalCompanyJobFormProps) {
     const [formData, setFormData] = useState<CompanyJobFormData>(initialValues)
@@ -37,6 +146,34 @@ export default function PortalCompanyJobForm({
     useEffect(() => {
         setFormData(initialValues)
     }, [initialValues])
+
+    const isConstrainedMode = mode === "backend-constrained"
+
+    const normalizedCategoryOptions = useMemo(
+        () =>
+            Array.from(
+                new Set(
+                    categoryOptions
+                        .map((option) => option.trim())
+                        .filter(Boolean),
+                ),
+            ).map((option) => ({
+                value: option,
+                label: option,
+            })),
+        [categoryOptions],
+    )
+
+    const isCategorySelectionUnavailable =
+        isConstrainedMode && normalizedCategoryOptions.length === 0
+
+    const categoryHelperText = isConstrainedMode
+        ? isCategoryOptionsLoading && normalizedCategoryOptions.length === 0
+            ? "جاري تحميل تصنيفات الوظائف من الخادم..."
+            : categoryOptionsErrorMessage && normalizedCategoryOptions.length === 0
+              ? categoryOptionsErrorMessage
+              : "سيتم إرسال اسم التصنيف كما هو موجود في الباك."
+        : undefined
 
     const updateField = <K extends keyof CompanyJobFormData>(
         field: K,
@@ -54,7 +191,7 @@ export default function PortalCompanyJobForm({
 
     const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
-        onSubmit(formData)
+        void onSubmit(formData)
     }
 
     const submitIcon =
@@ -63,6 +200,8 @@ export default function PortalCompanyJobForm({
         ) : (
             <SendHorizontal className="ml-3 size-5" />
         )
+
+    const isSubmitDisabled = isSubmitting || isCategorySelectionUnavailable
 
     return (
         <section className="pb-12 pt-10 sm:pb-18 sm:pt-12" dir="rtl">
@@ -75,15 +214,31 @@ export default function PortalCompanyJobForm({
 
                     <form onSubmit={handleSubmit} className="grid gap-10">
                         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-                            <CompanyFieldLabel label="التصنيف الوظيفي :">
-                                <input
+                            {isConstrainedMode ? (
+                                <CompanySelectField
+                                    field="jobCategory"
+                                    label="التصنيف الوظيفي :"
                                     value={formData.jobCategory}
-                                    onChange={(event) =>
-                                        updateField("jobCategory", event.target.value)
-                                    }
-                                    className={companyFormInputClassName}
+                                    options={normalizedCategoryOptions}
+                                    isDisabled={isSubmitDisabled}
+                                    helperText={categoryHelperText}
+                                    onChange={updateField}
                                 />
-                            </CompanyFieldLabel>
+                            ) : (
+                                <CompanyFieldLabel label="التصنيف الوظيفي :">
+                                    <input
+                                        value={formData.jobCategory}
+                                        onChange={(event) =>
+                                            updateField(
+                                                "jobCategory",
+                                                event.target.value,
+                                            )
+                                        }
+                                        required
+                                        className={companyFormInputClassName}
+                                    />
+                                </CompanyFieldLabel>
+                            )}
 
                             <CompanyFieldLabel label="المسمى الوظيفي :">
                                 <input
@@ -91,6 +246,7 @@ export default function PortalCompanyJobForm({
                                     onChange={(event) =>
                                         updateField("jobTitle", event.target.value)
                                     }
+                                    required
                                     className={companyFormInputClassName}
                                 />
                             </CompanyFieldLabel>
@@ -104,19 +260,31 @@ export default function PortalCompanyJobForm({
                                             event.target.value,
                                         )
                                     }
+                                    required
                                     className={companyFormInputClassName}
                                 />
                             </CompanyFieldLabel>
 
-                            <CompanyFieldLabel label="نوع العمل :">
-                                <input
+                            {isConstrainedMode ? (
+                                <CompanySelectField
+                                    field="workMode"
+                                    label="نوع العمل :"
                                     value={formData.workMode}
-                                    onChange={(event) =>
-                                        updateField("workMode", event.target.value)
-                                    }
-                                    className={companyFormInputClassName}
+                                    options={constrainedWorkModeOptions}
+                                    onChange={updateField}
                                 />
-                            </CompanyFieldLabel>
+                            ) : (
+                                <CompanyFieldLabel label="نوع العمل :">
+                                    <input
+                                        value={formData.workMode}
+                                        onChange={(event) =>
+                                            updateField("workMode", event.target.value)
+                                        }
+                                        required
+                                        className={companyFormInputClassName}
+                                    />
+                                </CompanyFieldLabel>
+                            )}
 
                             <CompanyFieldLabel label="ساعات العمل :">
                                 <input
@@ -127,12 +295,17 @@ export default function PortalCompanyJobForm({
                                             event.target.value,
                                         )
                                     }
+                                    required
                                     className={companyFormInputClassName}
                                 />
                             </CompanyFieldLabel>
 
                             <CompanyFieldLabel label="سنوات الخبرة :">
                                 <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    inputMode="numeric"
                                     value={formData.yearsExperience}
                                     onChange={(event) =>
                                         updateField(
@@ -140,55 +313,100 @@ export default function PortalCompanyJobForm({
                                             event.target.value,
                                         )
                                     }
+                                    required
                                     className={companyFormInputClassName}
                                 />
                             </CompanyFieldLabel>
 
-                            <CompanyFieldLabel label="نوع الوظيفة :">
-                                <input
+                            {isConstrainedMode ? (
+                                <CompanySelectField
+                                    field="jobType"
+                                    label="نوع الوظيفة :"
                                     value={formData.jobType}
-                                    onChange={(event) =>
-                                        updateField("jobType", event.target.value)
-                                    }
-                                    className={companyFormInputClassName}
+                                    options={constrainedJobTypeOptions}
+                                    onChange={updateField}
                                 />
-                            </CompanyFieldLabel>
+                            ) : (
+                                <CompanyFieldLabel label="نوع الوظيفة :">
+                                    <input
+                                        value={formData.jobType}
+                                        onChange={(event) =>
+                                            updateField("jobType", event.target.value)
+                                        }
+                                        required
+                                        className={companyFormInputClassName}
+                                    />
+                                </CompanyFieldLabel>
+                            )}
 
-                            <CompanyFieldLabel label="مستوى اللغة الإنكليزية :">
-                                <input
+                            {isConstrainedMode ? (
+                                <CompanySelectField
+                                    field="englishLevel"
+                                    label="مستوى اللغة الإنجليزية :"
                                     value={formData.englishLevel}
-                                    onChange={(event) =>
-                                        updateField(
-                                            "englishLevel",
-                                            event.target.value,
-                                        )
-                                    }
-                                    className={companyFormInputClassName}
+                                    options={constrainedEnglishLevelOptions}
+                                    onChange={updateField}
                                 />
-                            </CompanyFieldLabel>
+                            ) : (
+                                <CompanyFieldLabel label="مستوى اللغة الإنجليزية :">
+                                    <input
+                                        value={formData.englishLevel}
+                                        onChange={(event) =>
+                                            updateField(
+                                                "englishLevel",
+                                                event.target.value,
+                                            )
+                                        }
+                                        required
+                                        className={companyFormInputClassName}
+                                    />
+                                </CompanyFieldLabel>
+                            )}
 
-                            <CompanyFieldLabel label="المستوى الوظيفي :">
-                                <input
+                            {isConstrainedMode ? (
+                                <CompanySelectField
+                                    field="seniority"
+                                    label="المستوى الوظيفي :"
                                     value={formData.seniority}
-                                    onChange={(event) =>
-                                        updateField("seniority", event.target.value)
-                                    }
-                                    className={companyFormInputClassName}
+                                    options={constrainedSeniorityOptions}
+                                    onChange={updateField}
                                 />
-                            </CompanyFieldLabel>
+                            ) : (
+                                <CompanyFieldLabel label="المستوى الوظيفي :">
+                                    <input
+                                        value={formData.seniority}
+                                        onChange={(event) =>
+                                            updateField("seniority", event.target.value)
+                                        }
+                                        required
+                                        className={companyFormInputClassName}
+                                    />
+                                </CompanyFieldLabel>
+                            )}
 
-                            <CompanyFieldLabel label="المستوى التعليمي المطلوب :">
-                                <input
+                            {isConstrainedMode ? (
+                                <CompanySelectField
+                                    field="educationLevel"
+                                    label="المستوى التعليمي المطلوب :"
                                     value={formData.educationLevel}
-                                    onChange={(event) =>
-                                        updateField(
-                                            "educationLevel",
-                                            event.target.value,
-                                        )
-                                    }
-                                    className={companyFormInputClassName}
+                                    options={constrainedEducationOptions}
+                                    onChange={updateField}
                                 />
-                            </CompanyFieldLabel>
+                            ) : (
+                                <CompanyFieldLabel label="المستوى التعليمي المطلوب :">
+                                    <input
+                                        value={formData.educationLevel}
+                                        onChange={(event) =>
+                                            updateField(
+                                                "educationLevel",
+                                                event.target.value,
+                                            )
+                                        }
+                                        required
+                                        className={companyFormInputClassName}
+                                    />
+                                </CompanyFieldLabel>
+                            )}
 
                             <CompanyFieldLabel label="أيام العمل :">
                                 <input
@@ -196,6 +414,7 @@ export default function PortalCompanyJobForm({
                                     onChange={(event) =>
                                         updateField("workingDays", event.target.value)
                                     }
+                                    required
                                     className={companyFormInputClassName}
                                 />
                             </CompanyFieldLabel>
@@ -206,39 +425,61 @@ export default function PortalCompanyJobForm({
                                     onChange={(event) =>
                                         updateField("location", event.target.value)
                                     }
+                                    required
                                     className={companyFormInputClassName}
                                 />
                             </CompanyFieldLabel>
 
                             <CompanyFieldLabel label="الحد الأدنى للراتب :">
                                 <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    inputMode="numeric"
                                     value={formData.minSalary}
                                     onChange={(event) =>
                                         updateField("minSalary", event.target.value)
                                     }
+                                    required
                                     className={companyFormInputClassName}
                                 />
                             </CompanyFieldLabel>
 
                             <CompanyFieldLabel label="الحد الأعلى للراتب :">
                                 <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    inputMode="numeric"
                                     value={formData.maxSalary}
                                     onChange={(event) =>
                                         updateField("maxSalary", event.target.value)
                                     }
+                                    required
                                     className={companyFormInputClassName}
                                 />
                             </CompanyFieldLabel>
 
-                            <CompanyFieldLabel label="لغة السيرة الذاتية :">
-                                <input
+                            {isConstrainedMode ? (
+                                <CompanySelectField
+                                    field="cvLanguage"
+                                    label="لغة السيرة الذاتية :"
                                     value={formData.cvLanguage}
-                                    onChange={(event) =>
-                                        updateField("cvLanguage", event.target.value)
-                                    }
-                                    className={companyFormInputClassName}
+                                    options={constrainedResumeLanguageOptions}
+                                    onChange={updateField}
                                 />
-                            </CompanyFieldLabel>
+                            ) : (
+                                <CompanyFieldLabel label="لغة السيرة الذاتية :">
+                                    <input
+                                        value={formData.cvLanguage}
+                                        onChange={(event) =>
+                                            updateField("cvLanguage", event.target.value)
+                                        }
+                                        required
+                                        className={companyFormInputClassName}
+                                    />
+                                </CompanyFieldLabel>
+                            )}
                         </div>
 
                         <div className="grid gap-6 lg:grid-cols-2">
@@ -249,6 +490,7 @@ export default function PortalCompanyJobForm({
                                         updateField("jobSummary", event.target.value)
                                     }
                                     placeholder="النص هنا"
+                                    required
                                     className={companyFormTextareaClassName}
                                 />
                             </CompanyFieldLabel>
@@ -263,6 +505,7 @@ export default function PortalCompanyJobForm({
                                         )
                                     }
                                     placeholder="النص هنا"
+                                    required
                                     className={companyFormTextareaClassName}
                                 />
                             </CompanyFieldLabel>
@@ -277,6 +520,7 @@ export default function PortalCompanyJobForm({
                                         )
                                     }
                                     placeholder="النص هنا"
+                                    required
                                     className={companyFormTextareaClassName}
                                 />
                             </CompanyFieldLabel>
@@ -291,6 +535,7 @@ export default function PortalCompanyJobForm({
                                         )
                                     }
                                     placeholder="النص هنا"
+                                    required
                                     className={companyFormTextareaClassName}
                                 />
                             </CompanyFieldLabel>
@@ -302,6 +547,7 @@ export default function PortalCompanyJobForm({
                                 variant="panel"
                                 size="normal"
                                 onClick={handleReset}
+                                disabled={isSubmitting}
                                 className="inline-flex min-h-[48px] cursor-pointer items-center justify-center rounded-[10px] border border-[#b43531] bg-[#c63a35] !px-5 !py-3 !text-size16 !font-bold !text-white hover:!brightness-105"
                             >
                                 <Undo2 className="ml-3 size-5" />
@@ -312,9 +558,11 @@ export default function PortalCompanyJobForm({
                                 type="submit"
                                 variant="panel"
                                 size="normal"
+                                loading={isSubmitting}
+                                disabled={isSubmitDisabled}
                                 className="inline-flex min-h-[48px] cursor-pointer items-center justify-center rounded-[10px] border border-[#4ea56e] bg-[#5ab37b] !px-5 !py-3 !text-size16 !font-bold !text-white hover:!brightness-105"
                             >
-                                {submitIcon}
+                                {!isSubmitting ? submitIcon : null}
                                 {submitLabel}
                             </Button>
                         </div>

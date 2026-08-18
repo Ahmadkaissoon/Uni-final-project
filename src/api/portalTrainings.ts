@@ -1,11 +1,17 @@
 import companyImage from "../assets/common/company_img.png"
+import {
+    buildCompanyTrainingRecord,
+    type CompanyTrainingFormData,
+} from "../components/portal/companyForms/companyTrainingFormModel"
 import type {
     PortalInternshipListingItem,
     PortalInternshipQuickFact,
     PortalInternshipRecord,
 } from "../components/portal/portalInternshipsData"
 import { getPortalInternshipPath } from "../components/portal/portalInternshipsData"
-import { useGetData } from "./useQueries"
+import type { PortalTrainingRecord } from "../components/portal/portalTrainingsData"
+import { queryClient } from "./queryClient"
+import { useDeleteData, useGetData, usePostData, useUpdateData } from "./useQueries"
 
 interface ApiTrainingCompany {
     _id?: string
@@ -19,6 +25,8 @@ interface ApiTraining {
     companyId?: string
     title?: string
     trainerLevel?: string
+    category?: string
+    categoryName?: string
     fieldOfTraining?: string
     trainingbonus?: string
     trainingLocation?: string
@@ -41,6 +49,28 @@ interface ApiTrainingListResponse {
 }
 
 type ApiTrainingDetailResponse = ApiTraining | { data?: ApiTraining }
+
+export interface CreatePortalTrainingPayload {
+    title: string
+    trainerLevel?: string
+    categoryName: string
+    trainingbonus: string
+    trainingLocation: string
+    trainingdays: string
+    trainingDuration: string
+    trainingDescription: string
+    goalsAndResponsibilities: string
+    requirements: string
+    skills: string
+}
+
+export interface PortalCompanyTrainingSummaryItem {
+    id: string
+    date: string
+    trainingName: string
+    location: string
+    status: string
+}
 
 function getApiAssetUrl(path?: string | null) {
     if (!path?.trim()) {
@@ -107,6 +137,32 @@ function formatFieldOfTraining(value?: string) {
     }
 }
 
+function normalizeSpaces(value: string) {
+    return value.trim().replace(/\s+/g, " ")
+}
+
+function normalizeTrainerLevelForApi(value: string) {
+    const normalizedValue = normalizeSpaces(value).toLowerCase().replace(/_/g, " ")
+
+    if (!normalizedValue) {
+        return undefined
+    }
+
+    switch (normalizedValue) {
+        case "beginner":
+        case "مبتدئ":
+            return "beginner"
+        case "intermediate":
+        case "متوسط":
+            return "intermediate"
+        case "advanced":
+        case "متقدم":
+            return "advanced"
+        default:
+            return undefined
+    }
+}
+
 function formatTrainingDays(value?: string) {
     const normalizedValue = `${value ?? ""}`.trim()
 
@@ -142,6 +198,16 @@ function parseTextList(value?: string) {
     return source.length > 0 ? source : ["غير محدد"]
 }
 
+function formatCompanyListDate(value?: string) {
+    const text = `${value ?? ""}`.trim()
+
+    if (!text) {
+        return "غير محدد"
+    }
+
+    return text.slice(0, 10)
+}
+
 function resolveApiTrainingList(
     response: ApiTrainingListResponse | ApiTraining[] | undefined,
 ) {
@@ -150,6 +216,16 @@ function resolveApiTrainingList(
     }
 
     return response?.data ?? []
+}
+
+function resolveApiTrainingTotal(
+    response: ApiTrainingListResponse | ApiTraining[] | undefined,
+) {
+    if (Array.isArray(response)) {
+        return response.length
+    }
+
+    return response?.total ?? response?.data?.length ?? 0
 }
 
 function resolveApiTrainingDetail(response: ApiTrainingDetailResponse | undefined) {
@@ -210,6 +286,10 @@ function createQuickFacts(
             value: formatValue(
                 formatFieldOfTraining(training.fieldOfTraining) !== "غير محدد"
                     ? formatFieldOfTraining(training.fieldOfTraining)
+                    : formatFieldOfTraining(training.categoryName) !== "غير محدد"
+                      ? formatFieldOfTraining(training.categoryName)
+                    : formatFieldOfTraining(training.category) !== "غير محدد"
+                      ? formatFieldOfTraining(training.category)
                     : resolveTrainerLevel(training.trainerLevel),
             ),
             iconName: "briefcase",
@@ -326,6 +406,100 @@ export function mapApiTrainingToPortalInternshipRecord(
     }
 }
 
+function mapApiTrainingToCompanyTrainingFormData(
+    training: ApiTraining,
+): CompanyTrainingFormData {
+    return {
+        trainingCategory: formatValue(
+            formatFieldOfTraining(
+                training.categoryName ?? training.fieldOfTraining ?? training.category,
+            ),
+        ),
+        trainingTitle: formatValue(training.title, "فرصة تدريب"),
+        traineeLevel: formatValue(resolveTrainerLevel(training.trainerLevel)),
+        trainingDuration: formatValue(
+            formatSentenceValue(training.trainingDuration),
+        ),
+        trainingSchedule: formatValue(formatTrainingDays(training.trainingdays)),
+        trainingReward: formatValue(training.trainingbonus),
+        trainingLocation: formatValue(
+            formatTrainingLocation(training.trainingLocation),
+        ),
+        aboutTraining: formatValue(
+            formatSentenceValue(training.trainingDescription),
+        ),
+        responsibilities: formatValue(
+            formatSentenceValue(training.goalsAndResponsibilities),
+        ),
+        skills: formatValue(formatSentenceValue(training.skills)),
+        conditions: formatValue(formatSentenceValue(training.requirements)),
+    }
+}
+
+export function mapApiTrainingToPortalCompanyTrainingRecord(
+    training: ApiTraining,
+    fallback?: PortalTrainingRecord | null,
+): PortalTrainingRecord {
+    const companyName = formatValue(
+        training.company?.name ?? fallback?.companyName,
+        "شركتك",
+    )
+    const imageSrc =
+        getApiAssetUrl(training.company?.logoUrl) ??
+        fallback?.imageSrc ??
+        companyImage
+
+    return buildCompanyTrainingRecord(
+        mapApiTrainingToCompanyTrainingFormData(training),
+        {
+            id: training._id,
+            companyName,
+            companyLegalName: formatValue(
+                training.company?.name ?? fallback?.companyLegalName,
+                companyName,
+            ),
+            companyWebsite: formatValue(
+                training.company?.website ?? fallback?.companyWebsite,
+                "الملف الحالي",
+            ),
+            imageSrc,
+            imageAlt: fallback?.imageAlt ?? companyName,
+        },
+    )
+}
+
+function mapApiTrainingToPortalCompanyTrainingSummaryItem(
+    training: ApiTraining,
+): PortalCompanyTrainingSummaryItem {
+    return {
+        id: training._id,
+        date: formatCompanyListDate(training.createdAt),
+        trainingName: formatValue(training.title, "فرصة تدريب"),
+        location: formatValue(
+            formatTrainingLocation(training.trainingLocation),
+        ),
+        status: formatValue(training.status, "غير محدد"),
+    }
+}
+
+export function mapCompanyTrainingFormDataToCreatePortalTrainingPayload(
+    formData: CompanyTrainingFormData,
+): CreatePortalTrainingPayload {
+    return {
+        title: normalizeSpaces(formData.trainingTitle),
+        trainerLevel: normalizeTrainerLevelForApi(formData.traineeLevel),
+        categoryName: normalizeSpaces(formData.trainingCategory),
+        trainingbonus: normalizeSpaces(formData.trainingReward),
+        trainingLocation: normalizeSpaces(formData.trainingLocation),
+        trainingdays: normalizeSpaces(formData.trainingSchedule),
+        trainingDuration: normalizeSpaces(formData.trainingDuration),
+        trainingDescription: formData.aboutTraining.trim(),
+        goalsAndResponsibilities: formData.responsibilities.trim(),
+        requirements: formData.conditions.trim(),
+        skills: formData.skills.trim(),
+    }
+}
+
 export function usePortalTrainings() {
     const query = useGetData<ApiTrainingListResponse | ApiTraining[]>(
         "/trainings",
@@ -340,6 +514,140 @@ export function usePortalTrainings() {
         trainings: resolveApiTrainingList(query.data).map(
             mapApiTrainingToPortalInternshipListingItem,
         ),
+    }
+}
+
+export function useCreatePortalTraining() {
+    return usePostData<ApiTraining, CreatePortalTrainingPayload>("/trainings", {}, {
+        toastMessages: {
+            loading: "جارٍ إنشاء التدريب...",
+            success: "تم إنشاء التدريب بنجاح",
+            error: "فشل إنشاء التدريب",
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({
+                queryKey: ["portal-company-trainings"],
+            })
+            void queryClient.invalidateQueries({
+                queryKey: ["portal-trainings"],
+            })
+            void queryClient.invalidateQueries({
+                queryKey: ["portal-similar-trainings"],
+            })
+        },
+    })
+}
+
+export function useUpdatePortalTraining(trainingId: string | null) {
+    const resolvedPath = trainingId
+        ? `/trainings/${encodeURIComponent(trainingId)}`
+        : "/trainings"
+
+    return useUpdateData<ApiTraining, CreatePortalTrainingPayload>(
+        resolvedPath,
+        {},
+        false,
+        "put",
+        {
+            toastMessages: {
+                loading: "جاري تحديث التدريب...",
+                success: "تم تحديث التدريب بنجاح",
+                error: "فشل تحديث التدريب",
+            },
+            onSuccess: () => {
+                void queryClient.invalidateQueries({
+                    queryKey: ["portal-company-trainings"],
+                })
+                void queryClient.invalidateQueries({
+                    queryKey: ["portal-trainings"],
+                })
+
+                if (trainingId) {
+                    void queryClient.invalidateQueries({
+                        queryKey: ["portal-company-training", trainingId],
+                    })
+                    void queryClient.invalidateQueries({
+                        queryKey: ["portal-training", trainingId],
+                    })
+                    void queryClient.invalidateQueries({
+                        queryKey: ["portal-similar-trainings", trainingId],
+                    })
+                }
+            },
+        },
+    )
+}
+
+export function useDeletePortalTraining() {
+    return useDeleteData<{ message?: string }>({}, {
+        toastMessages: {
+            loading: "جاري حذف التدريب...",
+            success: "تم حذف التدريب بنجاح",
+            error: "فشل حذف التدريب",
+        },
+        onSuccess: (_response, link) => {
+            void queryClient.invalidateQueries({
+                queryKey: ["portal-company-trainings"],
+            })
+            void queryClient.invalidateQueries({
+                queryKey: ["portal-trainings"],
+            })
+
+            const trainingId = link.split("/").filter(Boolean).at(-1)
+
+            if (trainingId) {
+                void queryClient.removeQueries({
+                    queryKey: ["portal-company-training", trainingId],
+                })
+                void queryClient.removeQueries({
+                    queryKey: ["portal-training", trainingId],
+                })
+                void queryClient.removeQueries({
+                    queryKey: ["portal-similar-trainings", trainingId],
+                })
+            }
+        },
+    })
+}
+
+export function usePortalCompanyTrainings() {
+    const query = useGetData<ApiTrainingListResponse | ApiTraining[]>(
+        "/trainings/company",
+        {},
+        {
+            queryKey: ["portal-company-trainings"],
+        },
+    )
+
+    return {
+        ...query,
+        trainings: resolveApiTrainingList(query.data).map(
+            mapApiTrainingToPortalCompanyTrainingSummaryItem,
+        ),
+        total: resolveApiTrainingTotal(query.data),
+    }
+}
+
+export function usePortalCompanyTraining(
+    trainingId: string | null,
+    fallback?: PortalTrainingRecord | null,
+) {
+    const query = useGetData<ApiTrainingDetailResponse>(
+        trainingId ? `/trainings/company/${encodeURIComponent(trainingId)}` : null,
+        {},
+        {
+            enabled: Boolean(trainingId),
+            queryKey: ["portal-company-training", trainingId],
+        },
+    )
+
+    const apiTraining = resolveApiTrainingDetail(query.data)
+
+    return {
+        ...query,
+        training: apiTraining
+            ? mapApiTrainingToPortalCompanyTrainingRecord(apiTraining, fallback)
+            : fallback ?? null,
     }
 }
 

@@ -5,9 +5,10 @@ import PortalCompanyCreateJobPage from "../pages/portal/PortalCompanyCreateJobPa
 import PortalCompanyCreateTrainingPage from "../pages/portal/PortalCompanyCreateTrainingPage"
 import PortalCompanyApplicationsPage from "../pages/portal/PortalCompanyApplicationsPage"
 import PortalCompanyHomePage from "../pages/portal/PortalCompanyHomePage"
-import PortalCompanyOpportunitiesPage from "../pages/portal/PortalCompanyOpportunitiesPage"
+import PortalCompanyJobsPage from "../pages/portal/PortalCompanyJobsPage"
 import PortalCompanyProfilePage from "../pages/portal/PortalCompanyProfilePage"
 import PortalCompanyStudiesPage from "../pages/portal/PortalCompanyStudiesPage"
+import PortalCompanyTrainingsPage from "../pages/portal/PortalCompanyTrainingsPage"
 import PortalAllCompaniesPage from "../pages/portal/PortalAllCompaniesPage"
 import PortalAllJobsPage from "../pages/portal/PortalAllJobsPage"
 import PortalCareerGuidancePage from "../pages/portal/PortalCareerGuidancePage"
@@ -36,12 +37,12 @@ const portalPageRegistry: Partial<Record<string, PortalPageComponent>> = {
     "company-create-training": PortalCompanyCreateTrainingPage,
     "company-applications": PortalCompanyApplicationsPage,
     "company-home": PortalCompanyHomePage,
-    "company-jobs": PortalCompanyOpportunitiesPage,
-    "company-all-jobs": PortalCompanyOpportunitiesPage,
+    "company-jobs": PortalCompanyJobsPage,
+    "company-all-jobs": PortalCompanyJobsPage,
     "company-profile": PortalCompanyProfilePage,
     "company-profile-edit": PortalCompanyProfilePage,
     "company-studies": PortalCompanyStudiesPage,
-    "company-training-list": PortalCompanyOpportunitiesPage,
+    "company-training-list": PortalCompanyTrainingsPage,
     "company-training-applications": PortalCompanyApplicationsPage,
     profile: PortalUserProfilePage,
     "profile-edit": PortalUserProfilePage,
