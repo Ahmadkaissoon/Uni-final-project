@@ -1,6 +1,12 @@
 import { PencilLine } from "lucide-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
+import { usePortalAuthProfile } from "../../api/portalAuthProfile"
+import { usePortalJobCategories } from "../../api/portalJobs"
+import {
+    mapCompanyTrainingFormDataToCreatePortalTrainingPayload,
+    useCreatePortalTraining,
+} from "../../api/portalTrainings"
 import { Button } from "../../components/global/ui/button"
 import PortalCompanyTrainingForm from "../../components/portal/PortalCompanyTrainingForm"
 import PortalTrainingDetailsSection from "../../components/portal/PortalTrainingDetailsSection"
@@ -21,9 +27,44 @@ export default function PortalCompanyCreateTrainingPage({
 }: PortalCompanyCreateTrainingPageProps) {
     const [previewTraining, setPreviewTraining] =
         useState<PortalTrainingRecord | null>(null)
+    const createTrainingMutation = useCreatePortalTraining()
+    const companyProfileQuery = usePortalAuthProfile("company")
+    const jobCategoriesQuery = usePortalJobCategories()
 
-    function handleSubmit(formData: CompanyTrainingFormData) {
-        setPreviewTraining(buildCompanyTrainingRecord(formData))
+    const trainingCategoryOptions = useMemo(
+        () =>
+            (jobCategoriesQuery.data?.data ?? [])
+                .map((category) => category.name?.trim())
+                .filter((categoryName): categoryName is string => Boolean(categoryName)),
+        [jobCategoriesQuery.data],
+    )
+
+    async function handleSubmit(formData: CompanyTrainingFormData) {
+        const resolvedCompanyName = companyProfileQuery.profile?.name?.trim()
+
+        const fallbackPreviewTraining = buildCompanyTrainingRecord(formData, {
+            companyName: resolvedCompanyName,
+            companyLegalName: resolvedCompanyName,
+            imageSrc: companyProfileQuery.profile?.avatarSrc,
+            imageAlt: resolvedCompanyName,
+        })
+
+        const response = await createTrainingMutation.mutateAsync(
+            mapCompanyTrainingFormDataToCreatePortalTrainingPayload(formData),
+        )
+
+        setPreviewTraining(
+            buildCompanyTrainingRecord(formData, {
+                id: response._id,
+                companyName: response.company?.name?.trim() || resolvedCompanyName,
+                companyLegalName:
+                    response.company?.name?.trim() || resolvedCompanyName,
+                imageSrc:
+                    companyProfileQuery.profile?.avatarSrc ??
+                    fallbackPreviewTraining.imageSrc,
+                imageAlt: response.company?.name?.trim() || resolvedCompanyName,
+            }),
+        )
         window.scrollTo({ top: 0, behavior: "smooth" })
     }
 
@@ -34,10 +75,10 @@ export default function PortalCompanyCreateTrainingPage({
                     <div className="portal-design-inset">
                         <div className="portal-category-card-shadow rounded-[24px] border border-[#e4edf8] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6 text-right sm:p-7">
                             <h1 className="m-0 text-[28px] font-bold leading-[1.35] text-[#233047] sm:text-[34px]">
-                                تمت معاينة التدريب بنجاح
+                                تمت إضافة التدريب بنجاح
                             </h1>
                             <p className="mt-3 mb-0 max-w-[42ch] text-size18 font-medium leading-[1.9] text-[#495567]">
-                                هكذا سيظهر التدريب بعد إضافته على المنصة. يمكنك
+                                هكذا سيظهر التدريب بعد نشره على المنصة. يمكنك
                                 الرجوع لتعديل البيانات أو البدء بإدخال تدريب جديد.
                             </p>
 
@@ -80,6 +121,15 @@ export default function PortalCompanyCreateTrainingPage({
         <PortalCompanyTrainingForm
             initialValues={emptyCompanyTrainingFormData}
             resetValues={emptyCompanyTrainingFormData}
+            isSubmitting={createTrainingMutation.isPending}
+            mode="backend-constrained"
+            categoryOptions={trainingCategoryOptions}
+            isCategoryOptionsLoading={jobCategoriesQuery.isLoading}
+            categoryOptionsErrorMessage={
+                jobCategoriesQuery.isError
+                    ? "تعذر تحميل التصنيفات من الخادم. حاول تحديث الصفحة ثم أعد المحاولة."
+                    : undefined
+            }
             onSubmit={handleSubmit}
         />
     )

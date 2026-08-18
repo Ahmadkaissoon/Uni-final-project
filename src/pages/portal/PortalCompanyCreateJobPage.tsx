@@ -1,6 +1,14 @@
 import { PencilLine } from "lucide-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
+import { usePortalAuthProfile } from "../../api/portalAuthProfile"
+import {
+    mapApiJobToPortalJobRecord,
+    mapCompanyJobFormDataToCreatePortalJobPayload,
+    useCreatePortalJob,
+    usePortalJobCategories,
+} from "../../api/portalJobs"
+import { Button } from "../../components/global/ui/button"
 import PortalCompanyJobForm from "../../components/portal/PortalCompanyJobForm"
 import PortalJobDetailsSection from "../../components/portal/PortalJobDetailsSection"
 import {
@@ -9,7 +17,6 @@ import {
     type CompanyJobFormData,
 } from "../../components/portal/companyForms/companyJobFormModel"
 import type { PortalJobRecord } from "../../components/portal/portalJobsData"
-import { Button } from "../../components/global/ui/button"
 import type { PortalPageDefinition } from "../../router/portalPages"
 
 interface PortalCompanyCreateJobPageProps {
@@ -20,9 +27,33 @@ export default function PortalCompanyCreateJobPage({
     page: _page,
 }: PortalCompanyCreateJobPageProps) {
     const [previewJob, setPreviewJob] = useState<PortalJobRecord | null>(null)
+    const createJobMutation = useCreatePortalJob()
+    const companyProfileQuery = usePortalAuthProfile("company")
+    const jobCategoriesQuery = usePortalJobCategories()
 
-    function handleSubmit(formData: CompanyJobFormData) {
-        setPreviewJob(buildCompanyJobRecord(formData))
+    const jobCategoryOptions = useMemo(
+        () =>
+            (jobCategoriesQuery.data?.data ?? [])
+                .map((category) => category.name?.trim())
+                .filter((categoryName): categoryName is string => Boolean(categoryName)),
+        [jobCategoriesQuery.data],
+    )
+
+    async function handleSubmit(formData: CompanyJobFormData) {
+        const resolvedCompanyName = companyProfileQuery.profile?.name?.trim()
+
+        const fallbackPreviewJob = buildCompanyJobRecord(formData, {
+            companyName: resolvedCompanyName,
+            companyLegalName: resolvedCompanyName,
+            imageSrc: companyProfileQuery.profile?.avatarSrc,
+            imageAlt: resolvedCompanyName,
+        })
+
+        const response = await createJobMutation.mutateAsync(
+            mapCompanyJobFormDataToCreatePortalJobPayload(formData),
+        )
+
+        setPreviewJob(mapApiJobToPortalJobRecord(response, fallbackPreviewJob))
         window.scrollTo({ top: 0, behavior: "smooth" })
     }
 
@@ -33,11 +64,11 @@ export default function PortalCompanyCreateJobPage({
                     <div className="portal-design-inset">
                         <div className="portal-category-card-shadow rounded-[24px] border border-[#e4edf8] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6 text-right sm:p-7">
                             <h1 className="m-0 text-[28px] font-bold leading-[1.35] text-[#233047] sm:text-[34px]">
-                                تمت معاينة الوظيفة بنجاح
+                                تمت إضافة الوظيفة بنجاح
                             </h1>
                             <p className="mt-3 mb-0 max-w-[42ch] text-size18 font-medium leading-[1.9] text-[#495567]">
-                                هكذا ستظهر الوظيفة بعد إضافتها على المنصة. يمكنك
-                                الرجوع لتعديل البيانات أو البدء بإدخال وظيفة جديدة.
+                                هكذا ستظهر الوظيفة بعد نشرها على المنصة. يمكنك العودة
+                                لتعديل البيانات أو البدء بإدخال وظيفة جديدة.
                             </p>
 
                             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
@@ -80,6 +111,15 @@ export default function PortalCompanyCreateJobPage({
         <PortalCompanyJobForm
             initialValues={emptyCompanyJobFormData}
             resetValues={emptyCompanyJobFormData}
+            isSubmitting={createJobMutation.isPending}
+            mode="backend-constrained"
+            categoryOptions={jobCategoryOptions}
+            isCategoryOptionsLoading={jobCategoriesQuery.isLoading}
+            categoryOptionsErrorMessage={
+                jobCategoriesQuery.isError
+                    ? "تعذر تحميل التصنيفات من الخادم. حاول تحديث الصفحة ثم أعد المحاولة."
+                    : undefined
+            }
             onSubmit={handleSubmit}
         />
     )

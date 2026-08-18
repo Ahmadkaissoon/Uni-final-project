@@ -1,5 +1,5 @@
 import { Save, SendHorizontal, Undo2 } from "lucide-react"
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useState, type FormEvent } from "react"
 
 import { Button } from "../global/ui/button"
 import {
@@ -11,6 +11,13 @@ import {
 import type { CompanyTrainingFormData } from "./companyForms/companyTrainingFormModel"
 import { emptyCompanyTrainingFormData } from "./companyForms/companyTrainingFormModel"
 
+interface SelectOption {
+    value: string
+    label: string
+}
+
+export type PortalCompanyTrainingFormMode = "free" | "backend-constrained"
+
 interface PortalCompanyTrainingFormProps {
     title?: string
     description?: string
@@ -19,7 +26,65 @@ interface PortalCompanyTrainingFormProps {
     submitLabel?: string
     resetLabel?: string
     submitAction?: "send" | "save"
-    onSubmit: (formData: CompanyTrainingFormData) => void
+    isSubmitting?: boolean
+    mode?: PortalCompanyTrainingFormMode
+    categoryOptions?: string[]
+    isCategoryOptionsLoading?: boolean
+    categoryOptionsErrorMessage?: string
+    onSubmit: (formData: CompanyTrainingFormData) => void | Promise<void>
+}
+
+const constrainedTraineeLevelOptions: SelectOption[] = [
+    { value: "beginner", label: "مبتدئ" },
+    { value: "intermediate", label: "متوسط" },
+    { value: "advanced", label: "متقدم" },
+]
+
+interface SelectFieldProps<K extends keyof CompanyTrainingFormData> {
+    field: K
+    label: string
+    value: CompanyTrainingFormData[K]
+    options: SelectOption[]
+    isDisabled?: boolean
+    helperText?: string
+    onChange: (field: K, value: CompanyTrainingFormData[K]) => void
+}
+
+function CompanySelectField<K extends keyof CompanyTrainingFormData>({
+    field,
+    label,
+    value,
+    options,
+    isDisabled = false,
+    helperText,
+    onChange,
+}: SelectFieldProps<K>) {
+    return (
+        <CompanyFieldLabel label={label}>
+            <select
+                value={value}
+                onChange={(event) =>
+                    onChange(field, event.target.value as CompanyTrainingFormData[K])
+                }
+                disabled={isDisabled}
+                required
+                className={companyFormInputClassName}
+            >
+                <option value="">اختر من القائمة</option>
+                {options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                        {option.label}
+                    </option>
+                ))}
+            </select>
+
+            {helperText ? (
+                <span className="text-size13 font-medium text-[#5f6d82]">
+                    {helperText}
+                </span>
+            ) : null}
+        </CompanyFieldLabel>
+    )
 }
 
 export default function PortalCompanyTrainingForm({
@@ -30,6 +95,11 @@ export default function PortalCompanyTrainingForm({
     submitLabel = "إرسال الطلب",
     resetLabel = "إعادة تعيين",
     submitAction = "send",
+    isSubmitting = false,
+    mode = "free",
+    categoryOptions = [],
+    isCategoryOptionsLoading = false,
+    categoryOptionsErrorMessage,
     onSubmit,
 }: PortalCompanyTrainingFormProps) {
     const [formData, setFormData] = useState<CompanyTrainingFormData>(
@@ -39,6 +109,34 @@ export default function PortalCompanyTrainingForm({
     useEffect(() => {
         setFormData(initialValues)
     }, [initialValues])
+
+    const isConstrainedMode = mode === "backend-constrained"
+
+    const normalizedCategoryOptions = useMemo(
+        () =>
+            Array.from(
+                new Set(
+                    categoryOptions
+                        .map((option) => option.trim())
+                        .filter(Boolean),
+                ),
+            ).map((option) => ({
+                value: option,
+                label: option,
+            })),
+        [categoryOptions],
+    )
+
+    const isCategorySelectionUnavailable =
+        isConstrainedMode && normalizedCategoryOptions.length === 0
+
+    const categoryHelperText = isConstrainedMode
+        ? isCategoryOptionsLoading && normalizedCategoryOptions.length === 0
+            ? "جاري تحميل تصنيفات التدريب من الخادم..."
+            : categoryOptionsErrorMessage && normalizedCategoryOptions.length === 0
+              ? categoryOptionsErrorMessage
+              : "سيتم إرسال اسم التصنيف كما هو موجود في الباك."
+        : undefined
 
     const updateField = <K extends keyof CompanyTrainingFormData>(
         field: K,
@@ -56,7 +154,7 @@ export default function PortalCompanyTrainingForm({
 
     const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
-        onSubmit(formData)
+        void onSubmit(formData)
     }
 
     const submitIcon =
@@ -65,6 +163,8 @@ export default function PortalCompanyTrainingForm({
         ) : (
             <SendHorizontal className="ml-3 size-5" />
         )
+
+    const isSubmitDisabled = isSubmitting || isCategorySelectionUnavailable
 
     return (
         <section className="pb-12 pt-10 sm:pb-18 sm:pt-12" dir="rtl">
@@ -77,18 +177,31 @@ export default function PortalCompanyTrainingForm({
 
                     <form onSubmit={handleSubmit} className="grid gap-10">
                         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-                            <CompanyFieldLabel label="التصنيف التدريبي :">
-                                <input
+                            {isConstrainedMode ? (
+                                <CompanySelectField
+                                    field="trainingCategory"
+                                    label="التصنيف التدريبي :"
                                     value={formData.trainingCategory}
-                                    onChange={(event) =>
-                                        updateField(
-                                            "trainingCategory",
-                                            event.target.value,
-                                        )
-                                    }
-                                    className={companyFormInputClassName}
+                                    options={normalizedCategoryOptions}
+                                    isDisabled={isSubmitDisabled}
+                                    helperText={categoryHelperText}
+                                    onChange={updateField}
                                 />
-                            </CompanyFieldLabel>
+                            ) : (
+                                <CompanyFieldLabel label="التصنيف التدريبي :">
+                                    <input
+                                        value={formData.trainingCategory}
+                                        onChange={(event) =>
+                                            updateField(
+                                                "trainingCategory",
+                                                event.target.value,
+                                            )
+                                        }
+                                        required
+                                        className={companyFormInputClassName}
+                                    />
+                                </CompanyFieldLabel>
+                            )}
 
                             <CompanyFieldLabel label="المسمى التدريبي :">
                                 <input
@@ -99,22 +212,33 @@ export default function PortalCompanyTrainingForm({
                                             event.target.value,
                                         )
                                     }
+                                    required
                                     className={companyFormInputClassName}
                                 />
                             </CompanyFieldLabel>
 
-                            <CompanyFieldLabel label="مستوى المتدربين :">
-                                <input
+                            {isConstrainedMode ? (
+                                <CompanySelectField
+                                    field="traineeLevel"
+                                    label="مستوى المتدربين :"
                                     value={formData.traineeLevel}
-                                    onChange={(event) =>
-                                        updateField(
-                                            "traineeLevel",
-                                            event.target.value,
-                                        )
-                                    }
-                                    className={companyFormInputClassName}
+                                    options={constrainedTraineeLevelOptions}
+                                    onChange={updateField}
                                 />
-                            </CompanyFieldLabel>
+                            ) : (
+                                <CompanyFieldLabel label="مستوى المتدربين :">
+                                    <input
+                                        value={formData.traineeLevel}
+                                        onChange={(event) =>
+                                            updateField(
+                                                "traineeLevel",
+                                                event.target.value,
+                                            )
+                                        }
+                                        className={companyFormInputClassName}
+                                    />
+                                </CompanyFieldLabel>
+                            )}
 
                             <CompanyFieldLabel label="المدة التدريبية :">
                                 <input
@@ -125,11 +249,12 @@ export default function PortalCompanyTrainingForm({
                                             event.target.value,
                                         )
                                     }
+                                    required
                                     className={companyFormInputClassName}
                                 />
                             </CompanyFieldLabel>
 
-                            <CompanyFieldLabel label="الدوام التدريبي :">
+                            <CompanyFieldLabel label="أيام التدريب :">
                                 <input
                                     value={formData.trainingSchedule}
                                     onChange={(event) =>
@@ -138,6 +263,7 @@ export default function PortalCompanyTrainingForm({
                                             event.target.value,
                                         )
                                     }
+                                    required
                                     className={companyFormInputClassName}
                                 />
                             </CompanyFieldLabel>
@@ -151,6 +277,7 @@ export default function PortalCompanyTrainingForm({
                                             event.target.value,
                                         )
                                     }
+                                    required
                                     className={companyFormInputClassName}
                                 />
                             </CompanyFieldLabel>
@@ -164,6 +291,7 @@ export default function PortalCompanyTrainingForm({
                                             event.target.value,
                                         )
                                     }
+                                    required
                                     className={companyFormInputClassName}
                                 />
                             </CompanyFieldLabel>
@@ -180,6 +308,7 @@ export default function PortalCompanyTrainingForm({
                                         )
                                     }
                                     placeholder="النص هنا"
+                                    required
                                     className={companyFormTextareaClassName}
                                 />
                             </CompanyFieldLabel>
@@ -194,6 +323,7 @@ export default function PortalCompanyTrainingForm({
                                         )
                                     }
                                     placeholder="النص هنا"
+                                    required
                                     className={companyFormTextareaClassName}
                                 />
                             </CompanyFieldLabel>
@@ -205,6 +335,7 @@ export default function PortalCompanyTrainingForm({
                                         updateField("skills", event.target.value)
                                     }
                                     placeholder="النص هنا"
+                                    required
                                     className={companyFormTextareaClassName}
                                 />
                             </CompanyFieldLabel>
@@ -216,6 +347,7 @@ export default function PortalCompanyTrainingForm({
                                         updateField("conditions", event.target.value)
                                     }
                                     placeholder="النص هنا"
+                                    required
                                     className={companyFormTextareaClassName}
                                 />
                             </CompanyFieldLabel>
@@ -227,6 +359,7 @@ export default function PortalCompanyTrainingForm({
                                 variant="panel"
                                 size="normal"
                                 onClick={handleReset}
+                                disabled={isSubmitting}
                                 className="inline-flex min-h-[48px] cursor-pointer items-center justify-center rounded-[10px] border border-[#b43531] bg-[#c63a35] !px-5 !py-3 !text-size16 !font-bold !text-white hover:!brightness-105"
                             >
                                 <Undo2 className="ml-3 size-5" />
@@ -237,9 +370,11 @@ export default function PortalCompanyTrainingForm({
                                 type="submit"
                                 variant="panel"
                                 size="normal"
+                                loading={isSubmitting}
+                                disabled={isSubmitDisabled}
                                 className="inline-flex min-h-[48px] cursor-pointer items-center justify-center rounded-[10px] border border-[#4ea56e] bg-[#5ab37b] !px-5 !py-3 !text-size16 !font-bold !text-white hover:!brightness-105"
                             >
-                                {submitIcon}
+                                {!isSubmitting ? submitIcon : null}
                                 {submitLabel}
                             </Button>
                         </div>

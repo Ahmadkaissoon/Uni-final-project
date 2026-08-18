@@ -3,8 +3,10 @@ import type {
     PortalJobDetailEntry,
     PortalJobRecord,
 } from "../components/portal/portalJobsData"
+import type { CompanyJobFormData } from "../components/portal/companyForms/companyJobFormModel"
 import { getPortalJobPath } from "../components/portal/portalJobsData"
-import { useGetData } from "./useQueries"
+import { queryClient } from "./queryClient"
+import { useDeleteData, useGetData, usePostData, useUpdateData } from "./useQueries"
 
 interface ApiJobCompany {
     _id?: string
@@ -46,6 +48,19 @@ interface ApiJobListResponse {
     total?: number
 }
 
+interface ApiCompanyJobSummary {
+    id?: string
+    date?: string
+    jobName?: string
+    location?: string
+    status?: string
+}
+
+interface ApiCompanyJobSummaryResponse {
+    data?: ApiCompanyJobSummary[]
+    total?: number
+}
+
 interface ApiJobCategoryListResponse {
     data?: ApiJobCategory[]
     total?: number
@@ -62,6 +77,36 @@ interface ApiJobCategory {
 }
 
 type ApiJobDetailResponse = ApiJob | { data?: ApiJob }
+
+export interface PortalCompanyJobSummaryItem {
+    id: string
+    date: string
+    jobName: string
+    location: string
+    status: string
+}
+
+export interface CreatePortalJobPayload {
+    categoryName: string
+    title: string
+    specialization: string
+    jobLevel: string
+    requiredEducation: string
+    jobType: string
+    workDays: string
+    workHours: string
+    experienceYears?: number
+    location: string
+    minSalary?: number
+    maxSalary?: number
+    resumeLanguage: string
+    description: string
+    responsibilities: string
+    skills: string
+    requirements: string
+    workType: string
+    languagelevel: string
+}
 
 function getApiAssetUrl(path?: string | null) {
     if (!path?.trim()) {
@@ -343,6 +388,227 @@ function resolveApiJobList(
     return response?.data ?? []
 }
 
+function mapApiCompanyJobSummary(
+    job: ApiCompanyJobSummary,
+): PortalCompanyJobSummaryItem {
+    const jobName = formatValue(job.jobName, "وظيفة غير محددة")
+    const location = formatValue(job.location)
+
+    return {
+        id: formatValue(job.id, jobName),
+        date: formatValue(job.date),
+        jobName,
+        location,
+        status: formatValue(job.status),
+    }
+}
+
+function normalizeSpaces(value: string) {
+    return value.trim().replace(/\s+/g, " ")
+}
+
+function normalizeEnumValue(
+    value: string,
+    dictionary: Record<string, string>,
+    fallback = "",
+    preserveUnknown = true,
+) {
+    const normalizedValue = normalizeSpaces(value).toLowerCase().replace(/_/g, " ")
+
+    if (!normalizedValue) {
+        return fallback
+    }
+
+    const mappedValue = dictionary[normalizedValue]
+
+    if (mappedValue) {
+        return mappedValue
+    }
+
+    return preserveUnknown ? value.trim() : fallback
+}
+
+function extractNumber(value: string) {
+    const match = value.match(/-?\d+(\.\d+)?/)
+
+    if (!match) {
+        return undefined
+    }
+
+    const parsedValue = Number(match[0])
+    return Number.isFinite(parsedValue) ? parsedValue : undefined
+}
+
+function normalizeJobLevelForApi(value: string) {
+    return normalizeEnumValue(
+        value,
+        {
+            entry: "entry",
+            "entry level": "entry",
+            "entry-level": "entry",
+            junior: "junior",
+            mid: "mid-level",
+            middle: "mid-level",
+            "mid level": "mid-level",
+            "mid-level": "mid-level",
+            senior: "senior",
+            lead: "lead",
+            manager: "manager",
+            fresh: "entry",
+            "fresh graduate": "entry",
+            "حديث تخرج": "entry",
+            مبتدئ: "junior",
+            متوسط: "mid-level",
+            متقدم: "senior",
+            كبير: "senior",
+            "قائد فريق": "lead",
+            مدير: "manager",
+        },
+        "entry",
+        false,
+    )
+}
+
+function normalizeEducationForApi(value: string) {
+    return normalizeEnumValue(
+        value,
+        {
+            bachelor: "Bachelor",
+            بكالوريوس: "Bachelor",
+            master: "Master",
+            ماجستير: "Master",
+            phd: "PhD",
+            دكتوراه: "PhD",
+            diploma: "Diploma",
+            دبلوم: "Diploma",
+            "high school": "High School",
+            "high-school": "High School",
+            ثانوية: "High School",
+        },
+        "Bachelor",
+    )
+}
+
+function normalizeJobTypeForApi(value: string) {
+    return normalizeEnumValue(
+        value,
+        {
+            full_time: "full_time",
+            "full time": "full_time",
+            "full-time": "full_time",
+            fulltime: "full_time",
+            "دوام كامل": "full_time",
+            part_time: "part_time",
+            "part time": "part_time",
+            "part-time": "part_time",
+            parttime: "part_time",
+            "دوام جزئي": "part_time",
+            contract: "contract",
+            عقد: "contract",
+            freelance: "contract",
+            "عمل حر": "contract",
+            temporary: "temporary",
+            مؤقت: "temporary",
+            internship: "internship",
+            تدريب: "internship",
+        },
+        "full_time",
+        false,
+    )
+}
+
+function normalizeWorkTypeForApi(value: string) {
+    return normalizeEnumValue(
+        value,
+        {
+            remote: "remotely",
+            remotely: "remotely",
+            "عن بعد": "remotely",
+            hybrid: "hybrid",
+            هجين: "hybrid",
+            onsite: "onsite",
+            "on site": "onsite",
+            "on-site": "onsite",
+            "ضمن الشركة": "onsite",
+            مكتبي: "onsite",
+        },
+        "onsite",
+        false,
+    )
+}
+
+function normalizeResumeLanguageForApi(value: string) {
+    return normalizeEnumValue(
+        value,
+        {
+            arabic: "Arabic",
+            عربي: "Arabic",
+            العربية: "Arabic",
+            english: "English",
+            انجليزي: "English",
+            انكليزي: "English",
+            الإنجليزية: "English",
+            french: "French",
+            فرنسي: "French",
+            الفرنسية: "French",
+        },
+        "English",
+        false,
+    )
+}
+
+function normalizeLanguageLevelForApi(value: string) {
+    return normalizeEnumValue(
+        value,
+        {
+            a1: "A1",
+            a2: "A2",
+            b1: "B1",
+            b2: "B2",
+            c1: "C1",
+            c2: "C2",
+            basic: "A2",
+            beginner: "A2",
+            مبتدئ: "A2",
+            متوسط: "B1",
+            intermediate: "B1",
+            متقدم: "B2",
+            advanced: "B2",
+            fluent: "C1",
+            طليق: "C1",
+            احترافي: "C2",
+        },
+        "B1",
+        false,
+    )
+}
+
+export function mapCompanyJobFormDataToCreatePortalJobPayload(
+    formData: CompanyJobFormData,
+): CreatePortalJobPayload {
+    return {
+        categoryName: normalizeSpaces(formData.jobCategory),
+        title: normalizeSpaces(formData.jobTitle),
+        specialization: normalizeSpaces(formData.specialization),
+        jobLevel: normalizeJobLevelForApi(formData.seniority),
+        requiredEducation: normalizeEducationForApi(formData.educationLevel),
+        jobType: normalizeJobTypeForApi(formData.workMode),
+        workDays: normalizeSpaces(formData.workingDays),
+        workHours: normalizeSpaces(formData.workingHours),
+        experienceYears: extractNumber(formData.yearsExperience),
+        location: normalizeSpaces(formData.location),
+        minSalary: extractNumber(formData.minSalary),
+        maxSalary: extractNumber(formData.maxSalary),
+        resumeLanguage: normalizeResumeLanguageForApi(formData.cvLanguage),
+        description: formData.jobSummary.trim(),
+        responsibilities: formData.responsibilities.trim(),
+        skills: formData.qualifications.trim(),
+        requirements: formData.requirements.trim(),
+        workType: normalizeWorkTypeForApi(formData.jobType),
+        languagelevel: normalizeLanguageLevelForApi(formData.englishLevel),
+    }
+}
+
 function resolveApiJobDetail(response: ApiJobDetailResponse | undefined) {
     if (!response) {
         return undefined
@@ -432,6 +698,90 @@ export function usePortalJobs() {
     }
 }
 
+export function useCreatePortalJob() {
+    return usePostData<ApiJob, CreatePortalJobPayload>("/jobs", {}, {
+        toastMessages: {
+            loading: "جارٍ إنشاء الوظيفة...",
+            success: "تم إنشاء الوظيفة بنجاح",
+            error: "فشل إنشاء الوظيفة",
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({
+                queryKey: ["portal-company-jobs"],
+            })
+            void queryClient.invalidateQueries({
+                queryKey: ["portal-jobs"],
+            })
+        },
+    })
+}
+
+export function useUpdatePortalJob(jobId: string | null) {
+    const resolvedPath = jobId
+        ? `/jobs/${encodeURIComponent(jobId)}`
+        : "/jobs"
+
+    return useUpdateData<ApiJob, CreatePortalJobPayload>(
+        resolvedPath,
+        {},
+        false,
+        "put",
+        {
+            toastMessages: {
+                loading: "جاري تحديث الوظيفة...",
+                success: "تم تحديث الوظيفة بنجاح",
+                error: "فشل تحديث الوظيفة",
+            },
+            onSuccess: () => {
+                void queryClient.invalidateQueries({
+                    queryKey: ["portal-company-jobs"],
+                })
+                void queryClient.invalidateQueries({
+                    queryKey: ["portal-jobs"],
+                })
+
+                if (jobId) {
+                    void queryClient.invalidateQueries({
+                        queryKey: ["portal-company-job", jobId],
+                    })
+                    void queryClient.invalidateQueries({
+                        queryKey: ["portal-job", jobId],
+                    })
+                }
+            },
+        },
+    )
+}
+
+export function useDeletePortalJob() {
+    return useDeleteData<{ message?: string }>({}, {
+        toastMessages: {
+            loading: "جاري حذف الوظيفة...",
+            success: "تم حذف الوظيفة بنجاح",
+            error: "فشل حذف الوظيفة",
+        },
+        onSuccess: (_response, link) => {
+            void queryClient.invalidateQueries({
+                queryKey: ["portal-company-jobs"],
+            })
+            void queryClient.invalidateQueries({
+                queryKey: ["portal-jobs"],
+            })
+
+            const jobId = link.split("/").filter(Boolean).at(-1)
+
+            if (jobId) {
+                void queryClient.removeQueries({
+                    queryKey: ["portal-company-job", jobId],
+                })
+                void queryClient.removeQueries({
+                    queryKey: ["portal-job", jobId],
+                })
+            }
+        },
+    })
+}
+
 export function usePortalNearbyJobs() {
     const query = useGetData<ApiJobListResponse | ApiJob[]>(
         "/jobs/nearby",
@@ -444,6 +794,41 @@ export function usePortalNearbyJobs() {
     return {
         ...query,
         jobs: resolveApiJobList(query.data).map(mapApiNearbyJobToPortalNearbyJobItem),
+    }
+}
+
+export function usePortalCompanyJobs() {
+    const query = useGetData<ApiCompanyJobSummaryResponse>("/jobs/company", {}, {
+        queryKey: ["portal-company-jobs"],
+    })
+
+    return {
+        ...query,
+        jobs: (query.data?.data ?? []).map(mapApiCompanyJobSummary),
+        total: query.data?.total ?? 0,
+    }
+}
+
+export function usePortalCompanyJob(
+    jobId: string | null,
+    fallback?: PortalJobRecord | null,
+) {
+    const query = useGetData<ApiJobDetailResponse>(
+        jobId ? `/jobs/company/${encodeURIComponent(jobId)}` : null,
+        {},
+        {
+            enabled: Boolean(jobId),
+            queryKey: ["portal-company-job", jobId],
+        },
+    )
+
+    const apiJob = resolveApiJobDetail(query.data)
+
+    return {
+        ...query,
+        job: apiJob
+            ? mapApiJobToPortalJobRecord(apiJob, fallback)
+            : fallback ?? null,
     }
 }
 

@@ -92,7 +92,6 @@ const axiosClient = axios.create({
     baseURL: apiUrl,
     headers: {
         Accept: "application/json",
-        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
     },
 })
 
@@ -120,8 +119,17 @@ async function refreshAccessToken() {
 
 axiosClient.interceptors.request.use((config) => {
     const token = readStoredAuthToken()
+    const currentAuthorizationHeader =
+        typeof config.headers.Authorization === "string"
+            ? config.headers.Authorization.trim()
+            : ""
 
-    if (token && !config.headers.Authorization) {
+    if (
+        token &&
+        (!currentAuthorizationHeader ||
+            currentAuthorizationHeader === "Bearer null" ||
+            currentAuthorizationHeader === "Bearer undefined")
+    ) {
         config.headers.Authorization = `Bearer ${token}`
     }
 
