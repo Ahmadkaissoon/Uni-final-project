@@ -1,36 +1,21 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react"
-import { Bell, ChevronDown, Menu, X } from "lucide-react"
+import { type ReactNode, useMemo, useState } from "react"
+import { ChevronDown, Menu, X } from "lucide-react"
 
+import {
+    type AppNotification,
+    useNotificationsCenter,
+} from "../../api/notifications"
 import blueLogo from "../../assets/icons/blue_logo.png"
 import { cn } from "../../utils/cn"
+import NotificationCenter from "../global/notifications/NotificationCenter"
+import {
+    homePageIdByRole,
+    portalLayoutConfig,
+} from "./portalLayout.config"
 
 export type PortalRole = "user" | "company"
 
-interface PortalNavChild {
-    id: string
-    label: string
-}
-
-interface PortalNavItem {
-    id: string
-    label: string
-    children?: PortalNavChild[]
-}
-
-interface PortalFooterLink {
-    id: string
-    label: string
-}
-
-interface PortalFooterSection {
-    title: string
-    links: PortalFooterLink[]
-}
-
-interface PortalRoleConfig {
-    navItems: PortalNavItem[]
-    footerSections: PortalFooterSection[]
-}
+type PortalNavItem = (typeof portalLayoutConfig)[PortalRole]["navItems"][number]
 
 export interface PortalProfile {
     name: string
@@ -48,127 +33,6 @@ interface PortalLayoutProps {
     profile?: PortalProfile
     className?: string
     contentClassName?: string
-}
-
-export const defaultActivePageByRole: Record<PortalRole, string> = {
-    user: "jobs-all",
-    company: "company-create-job",
-}
-
-export const homePageIdByRole: Record<PortalRole, string> = {
-    user: "home",
-    company: "company-home",
-}
-
-export const portalLayoutConfig: Record<PortalRole, PortalRoleConfig> = {
-    user: {
-        navItems: [
-            { id: "home", label: "الرئيسية" },
-            {
-                id: "jobs",
-                label: "الوظائف",
-                children: [
-                    { id: "jobs-all", label: "كافة الوظائف" },
-                    {
-                        id: "jobs-categories",
-                        label: "كافة تصنيفات الوظائف",
-                    },
-                    { id: "internships", label: "فرص التدريب" },
-                    { id: "watchlist", label: "مراقبة" },
-                ],
-            },
-            { id: "saved-jobs", label: "الوظائف المحفوظة" },
-            { id: "companies", label: "الشركات" },
-            { id: "career-guidance", label: "الإرشاد الوظيفي" },
-        ],
-        footerSections: [
-            {
-                title: "الوظائف",
-                links: [
-                    { id: "jobs-all", label: "عرض كافة الوظائف" },
-                    { id: "jobs-categories", label: "عرض كافة التصنيفات" },
-                    { id: "jobs", label: "الوظائف" },
-                    { id: "internships", label: "عرض التدريبات" },
-                ],
-            },
-            {
-                title: "الشركات",
-                links: [
-                    { id: "companies-all", label: "عرض كافة الشركات" },
-                    { id: "companies", label: "الشركات" },
-                ],
-            },
-            {
-                title: "الملف الشخصي",
-                links: [
-                    { id: "profile", label: "عرض الملف الشخصي" },
-                    { id: "profile-edit", label: "تعديل الملف الشخصي" },
-                    {
-                        id: "profile-settings",
-                        label: "الإعدادات الشخصية",
-                    },
-                ],
-            },
-        ],
-    },
-    company: {
-        navItems: [
-            { id: "company-home", label: "الرئيسية" },
-            {
-                id: "company-create",
-                label: "إنشاء",
-                children: [
-                    { id: "company-create-job", label: "وظيفة" },
-                    { id: "company-create-training", label: "تدريب" },
-                ],
-            },
-            { id: "company-jobs", label: "وظائفي" },
-            { id: "company-applications", label: "الطلبات" },
-            { id: "company-studies", label: "دراسات" },
-            { id: "company-guidance", label: "إرشاد وظيفي" },
-        ],
-        footerSections: [
-            {
-                title: "الوظائف",
-                links: [
-                    { id: "company-all-jobs", label: "عرض كافة الوظائف" },
-                    { id: "company-create-job", label: "إنشاء وظيفة" },
-                    {
-                        id: "company-applications",
-                        label: "عرض طلبات التوظيف",
-                    },
-                ],
-            },
-            {
-                title: "التدريبات",
-                links: [
-                    {
-                        id: "company-training-list",
-                        label: "عرض كافة التدريبات",
-                    },
-                    {
-                        id: "company-create-training",
-                        label: "إنشاء التدريب",
-                    },
-                    {
-                        id: "company-training-applications",
-                        label: "عرض طلبات التدريب",
-                    },
-                ],
-            },
-            {
-                title: "الملف الشخصي",
-                links: [
-                    { id: "company-profile", label: "عرض الملف الشخصي" },
-                    {
-                        id: "company-profile-edit",
-                        label: "تعديل الملف الشخصي",
-                    },
-                    { id: "company-account", label: "إعدادات الحساب" },
-                ],
-            },
-        ],
-    },
 }
 
 const defaultProfileByRole: Record<PortalRole, PortalProfile> = {
@@ -197,7 +61,7 @@ function getProfileInitials(name: string) {
     return initials || "و"
 }
 
-function findActiveParentItem(config: PortalRoleConfig, pageId: string) {
+function findActiveParentItem(config: (typeof portalLayoutConfig)[PortalRole], pageId: string) {
     return (
         config.navItems.find(
             (item) =>
@@ -207,30 +71,57 @@ function findActiveParentItem(config: PortalRoleConfig, pageId: string) {
     )
 }
 
-export function getPortalPageLabel(role: PortalRole, pageId: string) {
-    const config = portalLayoutConfig[role]
-
-    for (const item of config.navItems) {
-        if (item.id === pageId) {
-            return item.label
+function resolvePortalNotificationPage(
+    role: PortalRole,
+    notification: AppNotification,
+) {
+    if (role === "company") {
+        if (
+            notification.type.code === "application_status" ||
+            notification.type.code === "meeting_scheduled" ||
+            notification.related.model === "Application"
+        ) {
+            return "company-applications"
         }
 
-        const activeChild = item.children?.find((child) => child.id === pageId)
-
-        if (activeChild) {
-            return activeChild.label
+        if (notification.type.code === "new_training") {
+            return "company-create-training"
         }
+
+        if (
+            notification.type.code === "new_job" ||
+            notification.related.model === "Job"
+        ) {
+            return "company-jobs"
+        }
+
+        return "company-home"
     }
 
-    for (const section of config.footerSections) {
-        const activeLink = section.links.find((link) => link.id === pageId)
-
-        if (activeLink) {
-            return activeLink.label
-        }
+    if (
+        notification.type.code === "application_status" ||
+        notification.type.code === "meeting_scheduled" ||
+        notification.related.model === "Application"
+    ) {
+        return "watchlist"
     }
 
-    return undefined
+    if (notification.type.code === "new_training") {
+        return "internships"
+    }
+
+    if (
+        notification.type.code === "new_job" ||
+        notification.related.model === "Job"
+    ) {
+        return "jobs-all"
+    }
+
+    if (notification.related.model === "Company") {
+        return "companies-all"
+    }
+
+    return homePageIdByRole[role]
 }
 
 export function PortalLayout({
@@ -250,15 +141,12 @@ export function PortalLayout({
         [activePageId, config],
     )
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+    const [notificationsOpen, setNotificationsOpen] = useState(false)
     const [openDropdownId, setOpenDropdownId] = useState<string | null>(
         activeParentItem?.children ? activeParentItem.id : null,
     )
-
-    useEffect(() => {
-        setOpenDropdownId(
-            activeParentItem?.children ? activeParentItem.id : null,
-        )
-    }, [activeParentItem, role])
+    const notificationsCenter = useNotificationsCenter(true)
+    const activeDropdownId = openDropdownId ?? activeParentItem?.id ?? null
 
     const closeMobileMenu = () => setMobileMenuOpen(false)
 
@@ -284,6 +172,19 @@ export function PortalLayout({
     const handleFooterLinkClick = (pageId: string) => {
         closeMobileMenu()
         onPageChange?.(pageId)
+    }
+
+    const handleNotificationClick = async (notification: AppNotification) => {
+        if (!notification.status.isRead) {
+            await notificationsCenter.markAsRead(notification.id)
+        }
+
+        setNotificationsOpen(false)
+        onPageChange?.(resolvePortalNotificationPage(role, notification))
+    }
+
+    const handleDeleteNotification = async (notification: AppNotification) => {
+        await notificationsCenter.deleteNotification(notification.id)
     }
 
     const avatarLabel =
@@ -354,7 +255,7 @@ export function PortalLayout({
                                     item.children?.some(
                                         (child) => child.id === activePageId,
                                     ) === true
-                                const isOpen = openDropdownId === item.id
+                                const isOpen = activeDropdownId === item.id
 
                                 return (
                                     <div
@@ -424,13 +325,28 @@ export function PortalLayout({
                         </nav>
 
                         <div className="flex shrink-0 items-center justify-start gap-2.5 max-[1100px]:order-3 max-[1100px]:w-full max-[1100px]:justify-between max-[640px]:gap-2">
-                            <button
-                                type="button"
-                                className="inline-flex size-[38px] cursor-pointer items-center justify-center rounded-[10px] bg-transparent text-inverse-fg transition duration-200 hover:bg-white/15"
-                                aria-label="الإشعارات"
-                            >
-                                <Bell size={17} />
-                            </button>
+                            <NotificationCenter
+                                notifications={notificationsCenter.notifications}
+                                unreadCount={notificationsCenter.unreadCount}
+                                open={notificationsOpen}
+                                loading={notificationsCenter.isLoading}
+                                error={
+                                    notificationsCenter.error instanceof Error
+                                        ? notificationsCenter.error.message
+                                        : null
+                                }
+                                busy={notificationsCenter.isUpdating}
+                                onToggle={() =>
+                                    setNotificationsOpen((current) => !current)
+                                }
+                                onMarkAllAsRead={() =>
+                                    notificationsCenter.markAllAsRead()
+                                }
+                                onNotificationClick={handleNotificationClick}
+                                onDeleteNotification={handleDeleteNotification}
+                                buttonClassName="size-[38px] rounded-[10px] border-none bg-transparent text-inverse-fg hover:bg-white/15"
+                                panelClassName="left-0 lg:left-0"
+                            />
 
                             <span
                                 className="h-[26px] w-px bg-white/30 max-[640px]:hidden"

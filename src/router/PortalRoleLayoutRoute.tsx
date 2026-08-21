@@ -5,10 +5,10 @@ import { hasAuthSession } from "../api"
 import { usePortalAuthProfile } from "../api/portalAuthProfile"
 import {
     PortalLayout,
-    defaultActivePageByRole,
     type PortalProfile,
     type PortalRole,
 } from "../components/layout/PortalLayout"
+import { defaultActivePageByRole } from "../components/layout/portalLayout.config"
 import {
     getStoredPortalProfileSummary,
     subscribeToPortalProfileUpdates,
