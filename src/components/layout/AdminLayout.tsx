@@ -1,9 +1,7 @@
 import { type ReactNode, useMemo, useState } from "react";
 import {
-  Bell,
   BriefcaseBusiness,
   Building2,
-  CheckCircle2,
   GraduationCap,
   LayoutDashboard,
   LogOut,
@@ -16,8 +14,13 @@ import {
 } from "lucide-react";
 
 import blueLogo from "../../assets/icons/blue_logo.png";
-import { cn } from "../../utils/cn";
+import {
+  type AppNotification,
+  useNotificationsCenter,
+} from "../../api/notifications";
 import { adminPages } from "../../router/adminPages";
+import { cn } from "../../utils/cn";
+import NotificationCenter from "../global/notifications/NotificationCenter";
 
 interface AdminLayoutProps {
   activePageId: string;
@@ -35,36 +38,35 @@ const adminNavIcons = {
   "admin-trainings": GraduationCap,
 } as const;
 
-const adminNotifications = [
-  {
-    id: "notification-001",
-    title: "تم تسجيل شركة جديدة",
-    description: "شركة Tech Bridge انضمت حديثاً إلى المنصة.",
-    time: "منذ 8 دقائق",
-    pageId: "admin-companies",
-  },
-  {
-    id: "notification-002",
-    title: "تمت إضافة فرصة عمل جديدة",
-    description: "فرصة مطور واجهات من قبل شركة Data Lens.",
-    time: "منذ 25 دقيقة",
-    pageId: "admin-jobs",
-  },
-  {
-    id: "notification-003",
-    title: "تم نشر فرصة تدريب",
-    description: "تدريب UI/UX جديد من قبل شركة Pixel Works.",
-    time: "منذ ساعة",
-    pageId: "admin-trainings",
-  },
-  {
-    id: "notification-004",
-    title: "تم تسجيل باحث عن عمل جديد",
-    description: "المستخدم سارة منصور أكمل إنشاء حسابه.",
-    time: "اليوم",
-    pageId: "admin-seekers",
-  },
-];
+function resolveAdminNotificationPage(notification: AppNotification) {
+  if (
+    notification.type.code === "new_job" ||
+    notification.related.model === "Job"
+  ) {
+    return "admin-jobs";
+  }
+
+  if (
+    notification.type.code === "new_training" ||
+    notification.related.model === "Training"
+  ) {
+    return "admin-trainings";
+  }
+
+  if (notification.related.model === "Company") {
+    return "admin-companies";
+  }
+
+  if (
+    notification.type.code === "application_status" ||
+    notification.related.model === "Application" ||
+    notification.related.model === "User"
+  ) {
+    return "admin-seekers";
+  }
+
+  return "admin-overview";
+}
 
 export default function AdminLayout({
   activePageId,
@@ -74,10 +76,9 @@ export default function AdminLayout({
 }: AdminLayoutProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
+  const notificationsCenter = useNotificationsCenter(true);
   const activePage = useMemo(
-    () =>
-      adminPages.find((page) => page.id === activePageId) ?? adminPages[0],
+    () => adminPages.find((page) => page.id === activePageId) ?? adminPages[0],
     [activePageId],
   );
 
@@ -87,30 +88,20 @@ export default function AdminLayout({
     onPageChange?.(pageId);
   };
 
-  const unreadNotificationsCount = adminNotifications.filter(
-    (notification) => !readNotificationIds.includes(notification.id),
-  ).length;
+  const handleNotificationClick = async (notification: AppNotification) => {
+    if (!notification.status.isRead) {
+      await notificationsCenter.markAsRead(notification.id);
+    }
 
-  const markAllNotificationsAsRead = () => {
-    setReadNotificationIds(
-      adminNotifications.map((notification) => notification.id),
-    );
+    handlePageChange(resolveAdminNotificationPage(notification));
   };
 
-  const handleNotificationClick = (notification: (typeof adminNotifications)[number]) => {
-    setReadNotificationIds((currentIds) =>
-      currentIds.includes(notification.id)
-        ? currentIds
-        : [...currentIds, notification.id],
-    );
-    handlePageChange(notification.pageId);
+  const handleDeleteNotification = async (notification: AppNotification) => {
+    await notificationsCenter.deleteNotification(notification.id);
   };
 
   return (
-    <div
-      dir="rtl"
-      className="min-h-svh bg-[#f4f7fb] text-foreground"
-    >
+    <div dir="rtl" className="min-h-svh bg-[#f4f7fb] text-foreground">
       <div className="flex min-h-svh">
         <aside
           className={cn(
@@ -125,7 +116,11 @@ export default function AdminLayout({
               onClick={() => handlePageChange("admin-overview")}
               aria-label="وظيفتي"
             >
-              <img className="h-10 w-full object-contain" src={blueLogo} alt="وظيفتي" />
+              <img
+                className="h-10 w-full object-contain"
+                src={blueLogo}
+                alt="وظيفتي"
+              />
             </button>
 
             <button
@@ -215,23 +210,24 @@ export default function AdminLayout({
                 <span className="text-size13">بحث سريع داخل لوحة التحكم</span>
               </div>
 
-              <button
-                type="button"
-                className={cn(
-                  "relative inline-flex size-11 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100",
-                  notificationsOpen && "bg-slate-100 text-primary",
-                )}
-                aria-label="الإشعارات"
-                aria-expanded={notificationsOpen}
-                onClick={() =>
+              <NotificationCenter
+                notifications={notificationsCenter.notifications}
+                unreadCount={notificationsCenter.unreadCount}
+                open={notificationsOpen}
+                loading={notificationsCenter.isLoading}
+                error={
+                  notificationsCenter.error instanceof Error
+                    ? notificationsCenter.error.message
+                    : null
+                }
+                busy={notificationsCenter.isUpdating}
+                onToggle={() =>
                   setNotificationsOpen((currentValue) => !currentValue)
                 }
-              >
-                <Bell size={19} />
-                <span className="absolute -top-1 -left-1 inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-5 text-white">
-                    {unreadNotificationsCount}
-                  </span>
-              </button>
+                onMarkAllAsRead={() => notificationsCenter.markAllAsRead()}
+                onNotificationClick={handleNotificationClick}
+                onDeleteNotification={handleDeleteNotification}
+              />
 
               {onLogout ? (
                 <button
@@ -244,67 +240,6 @@ export default function AdminLayout({
                   <LogOut size={17} />
                   <span className="hidden sm:inline">تسجيل الخروج</span>
                 </button>
-              ) : null}
-
-              {notificationsOpen ? (
-                <div className="absolute left-5 top-full z-50 mt-3 w-[min(360px,calc(100vw-40px))] overflow-hidden rounded-lg border border-slate-200 bg-white text-right shadow-[0_24px_70px_rgb(15_23_42_/_0.16)] lg:left-8">
-                  <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-                    <div>
-                      <h2 className="m-0 text-size15 font-bold text-[#17385e]">
-                        الإشعارات
-                      </h2>
-                      <p className="m-0 mt-1 text-size12 text-slate-500">
-                        آخر نشاطات المنصة
-                      </p>
-                    </div>
-                    <span className="rounded-lg bg-[#edf5ff] px-2.5 py-1 text-size12 font-bold text-primary">
-                      {unreadNotificationsCount} جديد
-                    </span>
-                  </div>
-
-                  <div className="border-b border-slate-100 px-4 py-2">
-                    <button
-                      type="button"
-                      onClick={markAllNotificationsAsRead}
-                      className="w-full rounded-lg px-3 py-2 text-size12 font-bold text-primary hover:bg-[#edf5ff] disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
-                      disabled={unreadNotificationsCount === 0}
-                    >
-                      تعيين الكل كمقروءة
-                    </button>
-                  </div>
-
-                  <div className="max-h-[360px] overflow-y-auto">
-                    {adminNotifications.map((notification) => (
-                      <button
-                        type="button"
-                        key={notification.id}
-                        onClick={() => handleNotificationClick(notification)}
-                        className={cn(
-                          "flex w-full gap-3 border-b border-slate-100 px-4 py-3 text-start last:border-b-0 hover:bg-slate-50",
-                          readNotificationIds.includes(notification.id) &&
-                            "bg-slate-50/70 opacity-75",
-                        )}
-                      >
-                        <span className="mt-1 inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
-                          <CheckCircle2 size={18} />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-3">
-                            <h3 className="m-0 text-size13 font-bold text-slate-800">
-                              {notification.title}
-                            </h3>
-                            <span className="shrink-0 text-size11 text-slate-400">
-                              {notification.time}
-                            </span>
-                          </div>
-                          <p className="m-0 mt-1 text-size12 leading-6 text-slate-600">
-                            {notification.description}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
               ) : null}
             </div>
           </header>

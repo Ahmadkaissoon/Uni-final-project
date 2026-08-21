@@ -88,6 +88,24 @@ function buildStoredProfileSummary<T extends PortalProfileFormValues>(
   };
 }
 
+function hasStoredProfileData<T extends PortalProfileFormValues>(
+  config: Pick<
+    PortalProfileEditorConfig<T>,
+    | "avatarStorageKey"
+    | "defaultValues"
+    | "displayNameField"
+    | "storageKey"
+  >,
+) {
+  const formData = readStoredProfile(config.storageKey, config.defaultValues);
+  const storedName = String(
+    (formData as Record<string, unknown>)[config.displayNameField] ?? "",
+  ).trim();
+  const avatarSrc = readStoredAvatar(config.avatarStorageKey);
+
+  return Boolean(storedName || avatarSrc?.trim());
+}
+
 export function readStoredProfile<T extends PortalProfileFormValues>(
   storageKey: string,
   defaultValues: T,
@@ -161,6 +179,17 @@ export function getStoredPortalProfileSummary(role: PortalRole) {
   return role === "company"
     ? buildStoredProfileSummary(companyProfileEditorConfig)
     : buildStoredProfileSummary(personProfileEditorConfig);
+}
+
+export function getStoredPortalProfileSummaryIfAvailable(role: PortalRole) {
+  const config =
+    role === "company" ? companyProfileEditorConfig : personProfileEditorConfig;
+
+  if (!hasStoredProfileData(config)) {
+    return null;
+  }
+
+  return buildStoredProfileSummary(config);
 }
 
 export function subscribeToPortalProfileUpdates(

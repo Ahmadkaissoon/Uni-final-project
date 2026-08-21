@@ -1,3 +1,5 @@
+import axiosClient from "./axiosClient";
+
 export type AdminManagerStatus = "active" | "disabled";
 
 export interface AdminManager {
@@ -12,49 +14,86 @@ export interface AdminManager {
 }
 
 export interface AdminManagerFormValues {
-  name: string;
   email: string;
-  roleTitle: string;
   password: string;
   confirmPassword: string;
 }
 
 export const demoCurrentAdminCredentials = {
-  email: "admin@wazefti.local",
+  email: "admin@example.com",
   password: "Admin@12345",
 };
 
-export const mockAdminManagers: AdminManager[] = [
-  {
-    id: "admin-current",
-    name: "أدمن المنصة",
-    email: demoCurrentAdminCredentials.email,
-    roleTitle: "مدير رئيسي",
-    createdAt: "2026-05-01",
-    lastLoginAt: "2026-05-28",
-    status: "active",
-    isCurrentUser: true,
-  },
-  {
-    id: "admin-002",
-    name: "نور الحسن",
-    email: "noor.admin@wazefti.local",
-    roleTitle: "مشرف محتوى",
-    createdAt: "2026-05-10",
-    lastLoginAt: "2026-05-27",
-    status: "active",
-  },
-  {
-    id: "admin-003",
-    name: "ليث خليل",
-    email: "laith.admin@wazefti.local",
-    roleTitle: "مشرف عمليات",
-    createdAt: "2026-05-14",
-    lastLoginAt: "2026-05-25",
-    status: "disabled",
-  },
-];
+interface RawAdminUser {
+  _id: string;
+  email?: string | null;
+  role?: string[] | null;
+  isActive?: boolean | null;
+  createdAt?: string | null;
+}
+
+interface RawAdminSummaryResponse {
+  users: RawAdminUser[];
+}
+
+interface RawAuthProfileResponse {
+  id?: string;
+  _id?: string;
+  email?: string | null;
+}
+
+function toDisplayName(email?: string | null) {
+  if (!email) {
+    return "مشرف المنصة";
+  }
+
+  const localPart = email.split("@")[0]?.replace(/[._-]+/g, " ").trim();
+  return localPart || email;
+}
+
+function mapAdmin(user: RawAdminUser, currentAdminId?: string) {
+  return {
+    id: user._id,
+    name: toDisplayName(user.email),
+    email: user.email ?? "",
+    roleTitle: "مشرف المنصة",
+    createdAt: user.createdAt ?? new Date(0).toISOString(),
+    lastLoginAt: "غير متاح من الـ API",
+    status: user.isActive === false ? "disabled" : "active",
+    isCurrentUser: currentAdminId === user._id,
+  } satisfies AdminManager;
+}
 
 export async function getAdminManagers() {
-  return mockAdminManagers;
+  const [usersResponse, profileResponse] = await Promise.all([
+    axiosClient.get<RawAdminSummaryResponse>("/dashboard/user/summary"),
+    axiosClient.get<RawAuthProfileResponse>("/auth/profile"),
+  ]);
+
+  const currentAdminId = profileResponse.data.id ?? profileResponse.data._id;
+
+  return usersResponse.data.users
+    .filter((user) => user.role?.includes("admin"))
+    .map((user) => mapAdmin(user, currentAdminId));
+}
+
+export async function createAdminManager(values: AdminManagerFormValues) {
+  const formData = new FormData();
+  formData.append(
+    "data",
+    JSON.stringify({
+      email: values.email.trim(),
+      password: values.password,
+      role: "admin",
+    }),
+  );
+
+  await axiosClient.post("/auth/signup", formData);
+}
+
+export async function updateAdminManagerStatus(
+  managerId: string,
+  active: boolean,
+) {
+  await axiosClient.post(`/dashboard/user/ban/${managerId}`, { active });
 }
