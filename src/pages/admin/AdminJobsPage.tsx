@@ -1,11 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  BriefcaseBusiness,
-  Eye,
-  Search,
-  ShieldAlert,
-  Trash2,
-} from "lucide-react";
+import { BriefcaseBusiness, Eye, Search, ShieldAlert } from "lucide-react";
 
 import {
   Table,
@@ -39,9 +33,37 @@ export default function AdminJobsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [selectedJob, setSelectedJob] = useState<AdminJobRecord | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getAdminJobs().then(setJobs);
+    let mounted = true;
+
+    async function loadJobs() {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await getAdminJobs();
+
+        if (mounted) {
+          setJobs(data);
+        }
+      } catch {
+        if (mounted) {
+          setError("تعذر تحميل فرص العمل.");
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadJobs();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const categories = useMemo(
@@ -72,11 +94,6 @@ export default function AdminJobsPage() {
       return matchesCategory && matchesSearch;
     });
   }, [categoryFilter, jobs, searchTerm]);
-
-  const deleteJob = (jobId: string) => {
-    setJobs((currentJobs) => currentJobs.filter((job) => job.id !== jobId));
-    setSelectedJob((currentJob) => (currentJob?.id === jobId ? null : currentJob));
-  };
 
   return (
     <>
@@ -123,7 +140,7 @@ export default function AdminJobsPage() {
               فرص العمل المنشورة
             </h2>
             <p className="m-0 mt-1 text-size13 text-slate-500">
-              عرض فرص العمل، الشركة الناشرة، تفاصيل الفرصة، وحذفها من المنصة.
+              عرض حقيقي لفرص العمل المنشورة مع تفاصيلها وعدد الطلبات عليها.
             </p>
           </div>
 
@@ -134,7 +151,7 @@ export default function AdminJobsPage() {
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 className="min-w-0 flex-1 bg-transparent text-size13 text-slate-700 outline-none placeholder:text-slate-400"
-                placeholder="بحث بالمسمى، الشركة، المدينة..."
+                placeholder="بحث بالمسمى أو الشركة أو المدينة..."
               />
             </label>
 
@@ -153,97 +170,94 @@ export default function AdminJobsPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <Table className="min-w-[1040px]">
-            <TableHeader>
-              <TableRow className="bg-slate-50 hover:bg-slate-50">
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  فرصة العمل
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  الشركة الناشرة
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  التصنيف
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  المدينة
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  تاريخ النشر
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  الطلبات
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  إجراءات
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredJobs.map((job) => (
-                <TableRow key={job.id}>
-                  <TableCell className="px-5 py-4">
-                    <div>
-                      <p className="m-0 font-bold text-[#17385e]">
-                        {job.jobTitle}
-                      </p>
-                      <p className="m-0 mt-1 text-size12 text-slate-500">
-                        {job.companyWebsite}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {job.companyName}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {job.category}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {job.location}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {formatDate(job.publishedAt)}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {job.applicationsCount}
-                  </TableCell>
-                  <TableCell className="px-5 py-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedJob(job)}
-                        className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100"
-                        aria-label="عرض التفاصيل"
-                        title="عرض التفاصيل"
-                      >
-                        <Eye size={17} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteJob(job.id)}
-                        className="inline-flex size-9 items-center justify-center rounded-lg border border-red-200 text-red-700 hover:bg-red-50"
-                        aria-label="حذف فرصة العمل"
-                        title="حذف فرصة العمل"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        {error ? (
+          <div className="p-5 text-red-700">{error}</div>
+        ) : isLoading ? (
+          <div className="p-5 text-slate-500">جارٍ تحميل فرص العمل...</div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[1040px]">
+                <TableHeader>
+                  <TableRow className="bg-slate-50 hover:bg-slate-50">
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      فرصة العمل
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      الشركة الناشرة
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      التصنيف
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      المدينة
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      تاريخ النشر
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      الطلبات
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      إجراءات
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredJobs.map((job) => (
+                    <TableRow key={job.id}>
+                      <TableCell className="px-5 py-4">
+                        <div>
+                          <p className="m-0 font-bold text-[#17385e]">
+                            {job.jobTitle}
+                          </p>
+                          <p className="m-0 mt-1 text-size12 text-slate-500">
+                            {job.companyWebsite}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-slate-600">
+                        {job.companyName}
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-slate-600">
+                        {job.category}
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-slate-600">
+                        {job.location}
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-slate-600">
+                        {formatDate(job.publishedAt)}
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-slate-600">
+                        {job.applicationsCount}
+                      </TableCell>
+                      <TableCell className="px-5 py-4">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedJob(job)}
+                          className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100"
+                          aria-label="عرض التفاصيل"
+                          title="عرض التفاصيل"
+                        >
+                          <Eye size={17} />
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-        {filteredJobs.length === 0 ? (
-          <div className="grid place-items-center px-5 py-12 text-center">
-            <ShieldAlert className="text-slate-400" size={34} />
-            <p className="m-0 mt-3 text-size15 font-semibold text-slate-600">
-              لا توجد نتائج مطابقة
-            </p>
-          </div>
-        ) : null}
+            {filteredJobs.length === 0 ? (
+              <div className="grid place-items-center px-5 py-12 text-center">
+                <ShieldAlert className="text-slate-400" size={34} />
+                <p className="m-0 mt-3 text-size15 font-semibold text-slate-600">
+                  لا توجد نتائج مطابقة
+                </p>
+              </div>
+            ) : null}
+          </>
+        )}
       </section>
 
       <Dialog
@@ -261,7 +275,7 @@ export default function AdminJobsPage() {
                 {selectedJob.jobTitle}
               </DialogTitle>
               <DialogDescription>
-                تفاصيل فرصة العمل كما تظهر في واجهة المنصة.
+                تفاصيل فرصة العمل كما وصلت من الباك ومُهيأة لواجهة الإدارة.
               </DialogDescription>
             </DialogHeader>
 
@@ -319,17 +333,6 @@ export default function AdminJobsPage() {
                   ))}
                 </div>
               </section>
-            </div>
-
-            <div className="flex flex-wrap justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => deleteJob(selectedJob.id)}
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-600 px-4 text-size13 font-bold text-white hover:bg-red-700"
-              >
-                <Trash2 size={16} />
-                حذف فرصة العمل من المنصة
-              </button>
             </div>
           </DialogContent>
         ) : null}

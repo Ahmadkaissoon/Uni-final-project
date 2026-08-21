@@ -20,7 +20,10 @@ import {
   type AdminCompany,
   type AdminCompanyStatus,
   getAdminCompanies,
+  getAdminCompanyById,
+  updateAdminCompanyStatus,
 } from "../../api/adminCompanies";
+import { withApiToast } from "../../api/apiToast";
 import { cn } from "../../utils/cn";
 import {
   type CompanyProfileData,
@@ -71,9 +74,39 @@ export default function AdminCompaniesPage() {
     "all",
   );
   const [selectedCompany, setSelectedCompany] = useState<AdminCompany | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDetailsLoading, setIsDetailsLoading] = useState(false);
+  const [activeMutationId, setActiveMutationId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getAdminCompanies().then(setCompanies);
+    let mounted = true;
+
+    async function loadCompanies() {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await getAdminCompanies();
+
+        if (mounted) {
+          setCompanies(data);
+        }
+      } catch {
+        if (mounted) {
+          setError("تعذر تحميل بيانات الشركات.");
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadCompanies();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const filteredCompanies = useMemo(() => {
@@ -104,26 +137,55 @@ export default function AdminCompaniesPage() {
   const activeCount = companies.filter((company) => company.status === "active").length;
   const blockedCount = companies.length - activeCount;
 
-  const toggleBlockStatus = (companyId: string) => {
-    setCompanies((currentCompanies) =>
-      currentCompanies.map((company) =>
-        company.id === companyId
-          ? {
-              ...company,
-              status: company.status === "blocked" ? "active" : "blocked",
-            }
-          : company,
-      ),
-    );
+  const openCompanyDetails = async (company: AdminCompany) => {
+    setSelectedCompany(company);
+    setIsDetailsLoading(true);
 
-    setSelectedCompany((currentCompany) =>
-      currentCompany?.id === companyId
-        ? {
-            ...currentCompany,
-            status: currentCompany.status === "blocked" ? "active" : "blocked",
-          }
-        : currentCompany,
-    );
+    try {
+      const details = await getAdminCompanyById(company.id);
+      setSelectedCompany(details);
+    } finally {
+      setIsDetailsLoading(false);
+    }
+  };
+
+  const toggleBlockStatus = async (company: AdminCompany) => {
+    const shouldActivate = company.status === "blocked";
+    setActiveMutationId(company.id);
+
+    try {
+      await withApiToast(
+        updateAdminCompanyStatus(company.id, shouldActivate),
+        {
+          loading: shouldActivate
+            ? "جارٍ تفعيل حساب الشركة..."
+            : "جارٍ حظر حساب الشركة...",
+          success: shouldActivate
+            ? "تم تفعيل حساب الشركة بنجاح"
+            : "تم حظر حساب الشركة بنجاح",
+          error: "تعذر تحديث حالة الشركة",
+        },
+      );
+
+      setCompanies((currentCompanies) =>
+        currentCompanies.map((item) =>
+          item.id === company.id
+            ? { ...item, status: shouldActivate ? "active" : "blocked" }
+            : item,
+        ),
+      );
+
+      setSelectedCompany((currentCompany) =>
+        currentCompany?.id === company.id
+          ? {
+              ...currentCompany,
+              status: shouldActivate ? "active" : "blocked",
+            }
+          : currentCompany,
+      );
+    } finally {
+      setActiveMutationId(null);
+    }
   };
 
   return (
@@ -167,11 +229,9 @@ export default function AdminCompaniesPage() {
       <section className="rounded-lg border border-slate-200 bg-white shadow-[0_14px_40px_rgb(15_23_42_/_0.05)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-5">
           <div>
-            <h2 className="m-0 text-size20 font-bold text-[#17385e]">
-              الشركات
-            </h2>
+            <h2 className="m-0 text-size20 font-bold text-[#17385e]">الشركات</h2>
             <p className="m-0 mt-1 text-size13 text-slate-500">
-              عرض الشركات، مراجعة تفاصيل البروفايل، وإدارة حالة الحظر.
+              عرض بيانات الشركات مع تفاصيل الحساب وإدارة حالة التفعيل.
             </p>
           </div>
 
@@ -182,7 +242,7 @@ export default function AdminCompaniesPage() {
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 className="min-w-0 flex-1 bg-transparent text-size13 text-slate-700 outline-none placeholder:text-slate-400"
-                placeholder="بحث باسم الشركة، البريد، المدينة..."
+                placeholder="بحث باسم الشركة أو البريد أو المدينة..."
               />
             </label>
 
@@ -200,129 +260,126 @@ export default function AdminCompaniesPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <Table className="min-w-[1040px]">
-            <TableHeader>
-              <TableRow className="bg-slate-50 hover:bg-slate-50">
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  الشركة
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  القطاع
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  المدينة
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  تاريخ التسجيل
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  الوظائف
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  التدريبات
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  الحالة
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  إجراءات
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCompanies.map((company) => (
-                <TableRow key={company.id}>
-                  <TableCell className="px-5 py-4">
-                    <div>
-                      <p className="m-0 font-bold text-[#17385e]">
-                        {company.profile.companyName}
-                      </p>
-                      <p className="m-0 mt-1 text-size12 text-slate-500">
-                        {company.accountEmail}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {getFieldDisplayValue(company.profile, "sector")}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {company.profile.city}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {formatDate(company.joinedAt)}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {company.publishedJobsCount}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {company.publishedTrainingsCount}
-                  </TableCell>
-                  <TableCell className="px-5 py-4">
-                    <span
-                      className={cn(
-                        "inline-flex rounded-lg px-3 py-1 text-size12 font-bold",
-                        company.status === "active"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-red-50 text-red-700",
-                      )}
-                    >
-                      {statusLabels[company.status]}
-                    </span>
-                  </TableCell>
-                  <TableCell className="px-5 py-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedCompany(company)}
-                        className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100"
-                        aria-label="عرض التفاصيل"
-                        title="عرض التفاصيل"
-                      >
-                        <Eye size={17} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleBlockStatus(company.id)}
-                        className={cn(
-                          "inline-flex size-9 items-center justify-center rounded-lg border",
-                          company.status === "blocked"
-                            ? "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                            : "border-red-200 text-red-700 hover:bg-red-50",
-                        )}
-                        aria-label={
-                          company.status === "blocked"
-                            ? "فك حظر الشركة"
-                            : "حظر الشركة"
-                        }
-                        title={
-                          company.status === "blocked"
-                            ? "فك حظر الشركة"
-                            : "حظر الشركة"
-                        }
-                      >
-                        {company.status === "blocked" ? (
-                          <RotateCcw size={16} />
-                        ) : (
-                          <Ban size={16} />
-                        )}
-                      </button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        {error ? (
+          <div className="p-5 text-red-700">{error}</div>
+        ) : isLoading ? (
+          <div className="p-5 text-slate-500">جارٍ تحميل الشركات...</div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[920px]">
+                <TableHeader>
+                  <TableRow className="bg-slate-50 hover:bg-slate-50">
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      الشركة
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      القطاع
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      المدينة
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      تاريخ التسجيل
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      الحالة
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      إجراءات
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCompanies.map((company) => (
+                    <TableRow key={company.id}>
+                      <TableCell className="px-5 py-4">
+                        <div>
+                          <p className="m-0 font-bold text-[#17385e]">
+                            {company.profile.companyName}
+                          </p>
+                          <p className="m-0 mt-1 text-size12 text-slate-500">
+                            {company.accountEmail}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-slate-600">
+                        {getFieldDisplayValue(company.profile, "sector")}
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-slate-600">
+                        {company.profile.city || "غير محدد"}
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-slate-600">
+                        {formatDate(company.joinedAt)}
+                      </TableCell>
+                      <TableCell className="px-5 py-4">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-lg px-3 py-1 text-size12 font-bold",
+                            company.status === "active"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-red-50 text-red-700",
+                          )}
+                        >
+                          {statusLabels[company.status]}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openCompanyDetails(company)}
+                            className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100"
+                            aria-label="عرض التفاصيل"
+                            title="عرض التفاصيل"
+                          >
+                            <Eye size={17} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleBlockStatus(company)}
+                            disabled={activeMutationId === company.id}
+                            className={cn(
+                              "inline-flex size-9 items-center justify-center rounded-lg border disabled:opacity-60",
+                              company.status === "blocked"
+                                ? "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                : "border-red-200 text-red-700 hover:bg-red-50",
+                            )}
+                            aria-label={
+                              company.status === "blocked"
+                                ? "فك حظر الشركة"
+                                : "حظر الشركة"
+                            }
+                            title={
+                              company.status === "blocked"
+                                ? "فك حظر الشركة"
+                                : "حظر الشركة"
+                            }
+                          >
+                            {company.status === "blocked" ? (
+                              <RotateCcw size={16} />
+                            ) : (
+                              <Ban size={16} />
+                            )}
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-        {filteredCompanies.length === 0 ? (
-          <div className="grid place-items-center px-5 py-12 text-center">
-            <ShieldAlert className="text-slate-400" size={34} />
-            <p className="m-0 mt-3 text-size15 font-semibold text-slate-600">
-              لا توجد نتائج مطابقة
-            </p>
-          </div>
-        ) : null}
+            {filteredCompanies.length === 0 ? (
+              <div className="grid place-items-center px-5 py-12 text-center">
+                <ShieldAlert className="text-slate-400" size={34} />
+                <p className="m-0 mt-3 text-size15 font-semibold text-slate-600">
+                  لا توجد نتائج مطابقة
+                </p>
+              </div>
+            ) : null}
+          </>
+        )}
       </section>
 
       <Dialog
@@ -340,20 +397,23 @@ export default function AdminCompaniesPage() {
                 {selectedCompany.profile.companyName}
               </DialogTitle>
               <DialogDescription>
-                كل البيانات المسجلة في بروفايل الشركة داخل المنصة.
+                تفاصيل حساب الشركة كما يعرضها الـ API داخل لوحة الإدارة.
               </DialogDescription>
             </DialogHeader>
 
             <div className="max-h-[62vh] space-y-4 overflow-y-auto pe-1">
               <section className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <h3 className="m-0 text-size16 font-bold text-[#17385e]">
-                  بيانات حساب الشركة على المنصة
+                  بيانات الحساب
                 </h3>
                 <div className="mt-4 grid gap-3 md:grid-cols-3">
                   {[
                     ["بريد الحساب", selectedCompany.accountEmail],
                     ["تاريخ التسجيل", formatDate(selectedCompany.joinedAt)],
-                    ["فرص العمل المنشورة", selectedCompany.publishedJobsCount.toString()],
+                    [
+                      "فرص العمل المنشورة",
+                      selectedCompany.publishedJobsCount.toString(),
+                    ],
                     [
                       "فرص التدريب المنشورة",
                       selectedCompany.publishedTrainingsCount.toString(),
@@ -372,6 +432,12 @@ export default function AdminCompaniesPage() {
                   ))}
                 </div>
               </section>
+
+              {isDetailsLoading ? (
+                <div className="rounded-lg border border-slate-200 bg-white p-4 text-slate-500">
+                  جارٍ تحميل التفاصيل الكاملة...
+                </div>
+              ) : null}
 
               {companyProfileSections.map((section) => (
                 <section
@@ -400,12 +466,13 @@ export default function AdminCompaniesPage() {
             <div className="flex flex-wrap justify-end gap-3">
               <button
                 type="button"
-                onClick={() => toggleBlockStatus(selectedCompany.id)}
+                onClick={() => toggleBlockStatus(selectedCompany)}
+                disabled={activeMutationId === selectedCompany.id}
                 className={cn(
-                  "inline-flex h-10 items-center gap-2 rounded-lg px-4 text-size13 font-bold",
+                  "inline-flex h-10 items-center gap-2 rounded-lg px-4 text-size13 font-bold text-white disabled:opacity-60",
                   selectedCompany.status === "blocked"
-                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                    : "bg-red-600 text-white hover:bg-red-700",
+                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    : "bg-red-600 hover:bg-red-700",
                 )}
               >
                 {selectedCompany.status === "blocked" ? (

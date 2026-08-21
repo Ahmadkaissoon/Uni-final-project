@@ -1,12 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import {
-  Edit3,
-  Plus,
-  Search,
-  ShieldAlert,
-  Trash2,
-  UserCog,
-} from "lucide-react";
+import { Plus, Search, ShieldAlert, UserCog } from "lucide-react";
 
 import {
   Table,
@@ -27,15 +20,15 @@ import {
   type AdminManager,
   type AdminManagerFormValues,
   type AdminManagerStatus,
-  demoCurrentAdminCredentials,
+  createAdminManager,
   getAdminManagers,
+  updateAdminManagerStatus,
 } from "../../api/adminManagers";
+import { withApiToast } from "../../api/apiToast";
 import { cn } from "../../utils/cn";
 
 const emptyFormValues: AdminManagerFormValues = {
-  name: "",
   email: "",
-  roleTitle: "",
   password: "",
   confirmPassword: "",
 };
@@ -55,27 +48,17 @@ function formatDate(value: string) {
   return dateFormatter.format(new Date(value));
 }
 
-function validateForm(values: AdminManagerFormValues, isEditing: boolean) {
-  if (!values.name.trim()) {
-    return "اسم المشرف مطلوب.";
-  }
-
+function validateForm(values: AdminManagerFormValues) {
   if (!values.email.trim() || !values.email.includes("@")) {
     return "أدخل بريد منصة صالح.";
   }
 
-  if (!values.roleTitle.trim()) {
-    return "المسمى الإداري مطلوب.";
+  if (values.password.length < 8) {
+    return "كلمة المرور يجب أن تكون 8 أحرف على الأقل.";
   }
 
-  if (!isEditing || values.password || values.confirmPassword) {
-    if (values.password.length < 8) {
-      return "كلمة المرور يجب أن تكون 8 أحرف على الأقل.";
-    }
-
-    if (values.password !== values.confirmPassword) {
-      return "تأكيد كلمة المرور غير مطابق.";
-    }
+  if (values.password !== values.confirmPassword) {
+    return "تأكيد كلمة المرور غير مطابق.";
   }
 
   return null;
@@ -88,13 +71,42 @@ export default function AdminManagersPage() {
     "all",
   );
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingManager, setEditingManager] = useState<AdminManager | null>(null);
   const [formValues, setFormValues] =
     useState<AdminManagerFormValues>(emptyFormValues);
   const [formError, setFormError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeMutationId, setActiveMutationId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    getAdminManagers().then(setManagers);
+    let mounted = true;
+
+    async function loadManagers() {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await getAdminManagers();
+
+        if (mounted) {
+          setManagers(data);
+        }
+      } catch {
+        if (mounted) {
+          setError("تعذر تحميل حسابات الأدمن.");
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadManagers();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const filteredManagers = useMemo(() => {
@@ -117,26 +129,6 @@ export default function AdminManagersPage() {
   const activeCount = managers.filter((manager) => manager.status === "active").length;
   const disabledCount = managers.length - activeCount;
 
-  const openCreateDialog = () => {
-    setEditingManager(null);
-    setFormValues(emptyFormValues);
-    setFormError(null);
-    setDialogOpen(true);
-  };
-
-  const openEditDialog = (manager: AdminManager) => {
-    setEditingManager(manager);
-    setFormValues({
-      name: manager.name,
-      email: manager.email,
-      roleTitle: manager.roleTitle,
-      password: "",
-      confirmPassword: "",
-    });
-    setFormError(null);
-    setDialogOpen(true);
-  };
-
   const updateFormField = (
     field: keyof AdminManagerFormValues,
     value: string,
@@ -148,66 +140,71 @@ export default function AdminManagersPage() {
     setFormError(null);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const reloadManagers = async () => {
+    const data = await getAdminManagers();
+    setManagers(data);
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const error = validateForm(formValues, editingManager !== null);
+    const validationError = validateForm(formValues);
 
-    if (error) {
-      setFormError(error);
+    if (validationError) {
+      setFormError(validationError);
       return;
     }
 
-    if (editingManager) {
-      setManagers((currentManagers) =>
-        currentManagers.map((manager) =>
-          manager.id === editingManager.id
-            ? {
-                ...manager,
-                name: formValues.name.trim(),
-                email: formValues.email.trim(),
-                roleTitle: formValues.roleTitle.trim(),
-              }
-            : manager,
-        ),
-      );
-    } else {
-      setManagers((currentManagers) => [
-        {
-          id: `admin-${Date.now()}`,
-          name: formValues.name.trim(),
-          email: formValues.email.trim(),
-          roleTitle: formValues.roleTitle.trim(),
-          createdAt: new Date().toISOString().slice(0, 10),
-          lastLoginAt: "لم يسجل الدخول بعد",
-          status: "active",
-        },
-        ...currentManagers,
-      ]);
+    setIsSubmitting(true);
+
+    try {
+      await withApiToast(createAdminManager(formValues), {
+        loading: "جارٍ إنشاء حساب الأدمن...",
+        success: "تم إنشاء حساب الأدمن بنجاح",
+        error: "تعذر إنشاء حساب الأدمن",
+      });
+
+      await reloadManagers();
+      setDialogOpen(false);
+      setFormValues(emptyFormValues);
+      setFormError(null);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const toggleManagerStatus = async (manager: AdminManager) => {
+    if (manager.isCurrentUser) {
+      return;
     }
 
-    setDialogOpen(false);
-    setEditingManager(null);
-    setFormValues(emptyFormValues);
-  };
+    const shouldActivate = manager.status === "disabled";
+    setActiveMutationId(manager.id);
 
-  const deleteManager = (managerId: string) => {
-    setManagers((currentManagers) =>
-      currentManagers.filter((manager) => manager.id !== managerId),
-    );
-  };
+    try {
+      await withApiToast(
+        updateAdminManagerStatus(manager.id, shouldActivate),
+        {
+          loading: shouldActivate
+            ? "جارٍ تفعيل حساب الأدمن..."
+            : "جارٍ تعطيل حساب الأدمن...",
+          success: shouldActivate
+            ? "تم تفعيل حساب الأدمن"
+            : "تم تعطيل حساب الأدمن",
+          error: "تعذر تحديث حالة الأدمن",
+        },
+      );
 
-  const toggleManagerStatus = (managerId: string) => {
-    setManagers((currentManagers) =>
-      currentManagers.map((manager) =>
-        manager.id === managerId
-          ? {
-              ...manager,
-              status: manager.status === "active" ? "disabled" : "active",
-            }
-          : manager,
-      ),
-    );
+      setManagers((currentManagers) =>
+        currentManagers.map((item) =>
+          item.id === manager.id
+            ? { ...item, status: shouldActivate ? "active" : "disabled" }
+            : item,
+        ),
+      );
+    } finally {
+      setActiveMutationId(null);
+    }
   };
 
   return (
@@ -255,13 +252,13 @@ export default function AdminManagersPage() {
               مشرفو المنصة
             </h2>
             <p className="m-0 mt-1 text-size13 text-slate-500">
-              إنشاء وتعديل وحذف حسابات الأدمن الخاصة بلوحة التحكم.
+              الربط الحالي يدعم إنشاء حسابات admin جديدة وتفعيلها أو تعطيلها.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={openCreateDialog}
+            onClick={() => setDialogOpen(true)}
             className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-size13 font-bold text-white hover:bg-primary-hover"
           >
             <Plus size={17} />
@@ -276,7 +273,7 @@ export default function AdminManagersPage() {
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               className="min-w-0 flex-1 bg-transparent text-size13 text-slate-700 outline-none placeholder:text-slate-400"
-              placeholder="بحث بالاسم، البريد، الصلاحية..."
+              placeholder="بحث بالاسم أو البريد..."
             />
           </label>
 
@@ -293,129 +290,106 @@ export default function AdminManagersPage() {
           </select>
         </div>
 
-        <div className="overflow-x-auto">
-          <Table className="min-w-[980px]">
-            <TableHeader>
-              <TableRow className="bg-slate-50 hover:bg-slate-50">
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  المشرف
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  المسمى
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  تاريخ الإنشاء
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  آخر دخول
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  الحالة
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  إجراءات
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredManagers.map((manager) => (
-                <TableRow key={manager.id}>
-                  <TableCell className="px-5 py-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="m-0 font-bold text-[#17385e]">
-                          {manager.name}
-                        </p>
-                        {manager.isCurrentUser ? (
-                          <span className="rounded-lg bg-[#edf5ff] px-2 py-0.5 text-size11 font-bold text-primary">
-                            الحساب الحالي
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="m-0 mt-1 text-size12 text-slate-500">
-                        {manager.email}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {manager.roleTitle}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {formatDate(manager.createdAt)}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {manager.lastLoginAt === "لم يسجل الدخول بعد"
-                      ? manager.lastLoginAt
-                      : formatDate(manager.lastLoginAt)}
-                  </TableCell>
-                  <TableCell className="px-5 py-4">
-                    <span
-                      className={cn(
-                        "inline-flex rounded-lg px-3 py-1 text-size12 font-bold",
-                        manager.status === "active"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-red-50 text-red-700",
-                      )}
-                    >
-                      {statusLabels[manager.status]}
-                    </span>
-                  </TableCell>
-                  <TableCell className="px-5 py-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEditDialog(manager)}
-                        className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100"
-                        aria-label="تعديل حساب المشرف"
-                        title="تعديل"
-                      >
-                        <Edit3 size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleManagerStatus(manager.id)}
-                        className="inline-flex h-9 items-center rounded-lg border border-slate-200 px-3 text-size12 font-bold text-slate-700 hover:bg-slate-100"
-                        disabled={manager.isCurrentUser}
-                      >
-                        {manager.status === "active" ? "تعطيل" : "تفعيل"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteManager(manager.id)}
-                        className="inline-flex size-9 items-center justify-center rounded-lg border border-red-200 text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
-                        aria-label="حذف حساب المشرف"
-                        title="حذف"
-                        disabled={manager.isCurrentUser}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        {error ? (
+          <div className="p-5 text-red-700">{error}</div>
+        ) : isLoading ? (
+          <div className="p-5 text-slate-500">جارٍ تحميل حسابات الأدمن...</div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[880px]">
+                <TableHeader>
+                  <TableRow className="bg-slate-50 hover:bg-slate-50">
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      المشرف
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      المسمى
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      تاريخ الإنشاء
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      آخر دخول
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      الحالة
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      إجراءات
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredManagers.map((manager) => (
+                    <TableRow key={manager.id}>
+                      <TableCell className="px-5 py-4">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="m-0 font-bold text-[#17385e]">
+                              {manager.name}
+                            </p>
+                            {manager.isCurrentUser ? (
+                              <span className="rounded-lg bg-[#edf5ff] px-2 py-0.5 text-size11 font-bold text-primary">
+                                الحساب الحالي
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="m-0 mt-1 text-size12 text-slate-500">
+                            {manager.email}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-slate-600">
+                        {manager.roleTitle}
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-slate-600">
+                        {formatDate(manager.createdAt)}
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-slate-600">
+                        {manager.lastLoginAt}
+                      </TableCell>
+                      <TableCell className="px-5 py-4">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-lg px-3 py-1 text-size12 font-bold",
+                            manager.status === "active"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-red-50 text-red-700",
+                          )}
+                        >
+                          {statusLabels[manager.status]}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-5 py-4">
+                        <button
+                          type="button"
+                          onClick={() => toggleManagerStatus(manager)}
+                          disabled={
+                            manager.isCurrentUser ||
+                            activeMutationId === manager.id
+                          }
+                          className="inline-flex h-9 items-center rounded-lg border border-slate-200 px-3 text-size12 font-bold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {manager.status === "active" ? "تعطيل" : "تفعيل"}
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-        {filteredManagers.length === 0 ? (
-          <div className="grid place-items-center px-5 py-12 text-center">
-            <ShieldAlert className="text-slate-400" size={34} />
-            <p className="m-0 mt-3 text-size15 font-semibold text-slate-600">
-              لا توجد نتائج مطابقة
-            </p>
-          </div>
-        ) : null}
-      </section>
-
-      <section className="rounded-lg border border-[#dce8f7] bg-[#edf5ff] p-5">
-        <h2 className="m-0 text-size16 font-bold text-[#17385e]">
-          الحساب الوهمي الحالي
-        </h2>
-        <p className="m-0 mt-2 text-size13 leading-7 text-slate-600">
-          البريد: {demoCurrentAdminCredentials.email}، كلمة المرور:
-          {" "}
-          {demoCurrentAdminCredentials.password}
-        </p>
+            {filteredManagers.length === 0 ? (
+              <div className="grid place-items-center px-5 py-12 text-center">
+                <ShieldAlert className="text-slate-400" size={34} />
+                <p className="m-0 mt-3 text-size15 font-semibold text-slate-600">
+                  لا توجد نتائج مطابقة
+                </p>
+              </div>
+            ) : null}
+          </>
+        )}
       </section>
 
       <Dialog
@@ -423,50 +397,22 @@ export default function AdminManagersPage() {
         onOpenChange={(open) => {
           setDialogOpen(open);
           if (!open) {
-            setEditingManager(null);
+            setFormValues(emptyFormValues);
             setFormError(null);
           }
         }}
       >
-        <DialogContent className="w-[min(620px,92vw)] min-w-0">
+        <DialogContent className="w-[min(560px,92vw)] min-w-0">
           <DialogHeader className="text-start">
             <DialogTitle className="text-size22 text-[#17385e]">
-              {editingManager ? "تعديل حساب مشرف" : "إضافة مشرف جديد"}
+              إضافة مشرف جديد
             </DialogTitle>
             <DialogDescription>
-              هذا الحساب يستطيع تسجيل الدخول من واجهة الدخول كأدمن والانتقال إلى لوحة التحكم.
+              الباك يدعم إنشاء حساب admin جديد عبر البريد وكلمة المرور فقط.
             </DialogDescription>
           </DialogHeader>
 
           <form className="grid gap-4" onSubmit={handleSubmit}>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="grid gap-2">
-                <span className="text-size13 font-bold text-slate-600">
-                  اسم المشرف
-                </span>
-                <input
-                  value={formValues.name}
-                  onChange={(event) => updateFormField("name", event.target.value)}
-                  className="h-11 rounded-lg border border-slate-200 px-3 text-size13 outline-none focus:border-primary"
-                  placeholder="مثال: أحمد المسؤول"
-                />
-              </label>
-
-              <label className="grid gap-2">
-                <span className="text-size13 font-bold text-slate-600">
-                  المسمى الإداري
-                </span>
-                <input
-                  value={formValues.roleTitle}
-                  onChange={(event) =>
-                    updateFormField("roleTitle", event.target.value)
-                  }
-                  className="h-11 rounded-lg border border-slate-200 px-3 text-size13 outline-none focus:border-primary"
-                  placeholder="مثال: مشرف منصة"
-                />
-              </label>
-            </div>
-
             <label className="grid gap-2">
               <span className="text-size13 font-bold text-slate-600">
                 البريد الخاص بالمنصة
@@ -476,7 +422,7 @@ export default function AdminManagersPage() {
                 value={formValues.email}
                 onChange={(event) => updateFormField("email", event.target.value)}
                 className="h-11 rounded-lg border border-slate-200 px-3 text-size13 outline-none focus:border-primary"
-                placeholder="admin@wazefti.local"
+                placeholder="admin@example.com"
               />
             </label>
 
@@ -492,7 +438,7 @@ export default function AdminManagersPage() {
                     updateFormField("password", event.target.value)
                   }
                   className="h-11 rounded-lg border border-slate-200 px-3 text-size13 outline-none focus:border-primary"
-                  placeholder={editingManager ? "اتركها فارغة دون تغيير" : "********"}
+                  placeholder="********"
                 />
               </label>
 
@@ -507,7 +453,7 @@ export default function AdminManagersPage() {
                     updateFormField("confirmPassword", event.target.value)
                   }
                   className="h-11 rounded-lg border border-slate-200 px-3 text-size13 outline-none focus:border-primary"
-                  placeholder={editingManager ? "اتركها فارغة دون تغيير" : "********"}
+                  placeholder="********"
                 />
               </label>
             </div>
@@ -528,9 +474,10 @@ export default function AdminManagersPage() {
               </button>
               <button
                 type="submit"
-                className="h-10 rounded-lg bg-primary px-4 text-size13 font-bold text-white hover:bg-primary-hover"
+                disabled={isSubmitting}
+                className="h-10 rounded-lg bg-primary px-4 text-size13 font-bold text-white hover:bg-primary-hover disabled:opacity-60"
               >
-                {editingManager ? "حفظ التعديلات" : "إضافة المشرف"}
+                إنشاء الحساب
               </button>
             </div>
           </form>

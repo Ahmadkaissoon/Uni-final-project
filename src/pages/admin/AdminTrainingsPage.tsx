@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Eye, GraduationCap, Search, ShieldAlert, Trash2 } from "lucide-react";
+import { Eye, GraduationCap, Search, ShieldAlert } from "lucide-react";
 
 import {
   Table,
@@ -37,9 +37,37 @@ export default function AdminTrainingsPage() {
   const [locationFilter, setLocationFilter] = useState("all");
   const [selectedTraining, setSelectedTraining] =
     useState<AdminTrainingRecord | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getAdminTrainings().then(setTrainings);
+    let mounted = true;
+
+    async function loadTrainings() {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await getAdminTrainings();
+
+        if (mounted) {
+          setTrainings(data);
+        }
+      } catch {
+        if (mounted) {
+          setError("تعذر تحميل فرص التدريب.");
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadTrainings();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const locations = useMemo(
@@ -69,15 +97,6 @@ export default function AdminTrainingsPage() {
       return matchesLocation && matchesSearch;
     });
   }, [locationFilter, searchTerm, trainings]);
-
-  const deleteTraining = (trainingId: string) => {
-    setTrainings((currentTrainings) =>
-      currentTrainings.filter((training) => training.id !== trainingId),
-    );
-    setSelectedTraining((currentTraining) =>
-      currentTraining?.id === trainingId ? null : currentTraining,
-    );
-  };
 
   return (
     <>
@@ -127,7 +146,7 @@ export default function AdminTrainingsPage() {
               فرص التدريب المنشورة
             </h2>
             <p className="m-0 mt-1 text-size13 text-slate-500">
-              عرض فرص التدريب، الشركة الناشرة، تفاصيل الفرصة، وحذفها من المنصة.
+              عرض حقيقي لفرص التدريب المنشورة مع تفاصيلها وعدد الطلبات عليها.
             </p>
           </div>
 
@@ -138,7 +157,7 @@ export default function AdminTrainingsPage() {
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 className="min-w-0 flex-1 bg-transparent text-size13 text-slate-700 outline-none placeholder:text-slate-400"
-                placeholder="بحث باسم التدريب، الشركة، الموقع..."
+                placeholder="بحث باسم التدريب أو الشركة أو الموقع..."
               />
             </label>
 
@@ -157,91 +176,88 @@ export default function AdminTrainingsPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <Table className="min-w-[1040px]">
-            <TableHeader>
-              <TableRow className="bg-slate-50 hover:bg-slate-50">
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  فرصة التدريب
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  الشركة الناشرة
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  الموقع
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  تاريخ النشر
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  الطلبات
-                </TableHead>
-                <TableHead className="px-5 py-4 font-bold text-slate-600">
-                  إجراءات
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTrainings.map((training) => (
-                <TableRow key={training.id}>
-                  <TableCell className="px-5 py-4">
-                    <div>
-                      <p className="m-0 font-bold text-[#17385e]">
-                        {training.trainingType}
-                      </p>
-                      <p className="m-0 mt-1 text-size12 text-slate-500">
-                        {training.companyWebsite}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {training.companyName}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {training.location}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {formatDate(training.publishedAt)}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-slate-600">
-                    {training.applicationsCount}
-                  </TableCell>
-                  <TableCell className="px-5 py-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedTraining(training)}
-                        className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100"
-                        aria-label="عرض التفاصيل"
-                        title="عرض التفاصيل"
-                      >
-                        <Eye size={17} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteTraining(training.id)}
-                        className="inline-flex size-9 items-center justify-center rounded-lg border border-red-200 text-red-700 hover:bg-red-50"
-                        aria-label="حذف فرصة التدريب"
-                        title="حذف فرصة التدريب"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        {error ? (
+          <div className="p-5 text-red-700">{error}</div>
+        ) : isLoading ? (
+          <div className="p-5 text-slate-500">جارٍ تحميل فرص التدريب...</div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[1040px]">
+                <TableHeader>
+                  <TableRow className="bg-slate-50 hover:bg-slate-50">
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      فرصة التدريب
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      الشركة الناشرة
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      الموقع
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      تاريخ النشر
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      الطلبات
+                    </TableHead>
+                    <TableHead className="px-5 py-4 font-bold text-slate-600">
+                      إجراءات
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTrainings.map((training) => (
+                    <TableRow key={training.id}>
+                      <TableCell className="px-5 py-4">
+                        <div>
+                          <p className="m-0 font-bold text-[#17385e]">
+                            {training.trainingType}
+                          </p>
+                          <p className="m-0 mt-1 text-size12 text-slate-500">
+                            {training.companyWebsite}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-slate-600">
+                        {training.companyName}
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-slate-600">
+                        {training.location}
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-slate-600">
+                        {formatDate(training.publishedAt)}
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-slate-600">
+                        {training.applicationsCount}
+                      </TableCell>
+                      <TableCell className="px-5 py-4">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTraining(training)}
+                          className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100"
+                          aria-label="عرض التفاصيل"
+                          title="عرض التفاصيل"
+                        >
+                          <Eye size={17} />
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-        {filteredTrainings.length === 0 ? (
-          <div className="grid place-items-center px-5 py-12 text-center">
-            <ShieldAlert className="text-slate-400" size={34} />
-            <p className="m-0 mt-3 text-size15 font-semibold text-slate-600">
-              لا توجد نتائج مطابقة
-            </p>
-          </div>
-        ) : null}
+            {filteredTrainings.length === 0 ? (
+              <div className="grid place-items-center px-5 py-12 text-center">
+                <ShieldAlert className="text-slate-400" size={34} />
+                <p className="m-0 mt-3 text-size15 font-semibold text-slate-600">
+                  لا توجد نتائج مطابقة
+                </p>
+              </div>
+            ) : null}
+          </>
+        )}
       </section>
 
       <Dialog
@@ -259,7 +275,7 @@ export default function AdminTrainingsPage() {
                 {selectedTraining.trainingType}
               </DialogTitle>
               <DialogDescription>
-                تفاصيل فرصة التدريب كما تظهر في واجهة المنصة.
+                تفاصيل فرصة التدريب كما وصلت من الباك ومُهيأة لواجهة الإدارة.
               </DialogDescription>
             </DialogHeader>
 
@@ -340,33 +356,22 @@ export default function AdminTrainingsPage() {
                     key={title as string}
                     className="rounded-lg border border-slate-200 bg-white p-4"
                   >
-                    <h3 className="m-0 text-size16 font-bold text-[#17385e]">
-                      {title as string}
+                    <h3 className="m-0 text-size15 font-bold text-[#17385e]">
+                      {title}
                     </h3>
-                    <ul className="m-0 mt-4 grid gap-3 p-0">
-                      {(items as string[]).map((item) => (
-                        <li
-                          key={item}
-                          className="list-none rounded-lg bg-slate-50 p-3 text-size13 font-semibold leading-6 text-slate-700"
+                    <div className="mt-3 grid gap-2">
+                      {(items as string[]).map((item, index) => (
+                        <div
+                          key={`${title}-${index}`}
+                          className="rounded-lg bg-slate-50 px-3 py-2 text-size13 font-semibold text-slate-700"
                         >
                           {item}
-                        </li>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 ))}
               </section>
-            </div>
-
-            <div className="flex flex-wrap justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => deleteTraining(selectedTraining.id)}
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-600 px-4 text-size13 font-bold text-white hover:bg-red-700"
-              >
-                <Trash2 size={16} />
-                حذف فرصة التدريب من المنصة
-              </button>
             </div>
           </DialogContent>
         ) : null}
