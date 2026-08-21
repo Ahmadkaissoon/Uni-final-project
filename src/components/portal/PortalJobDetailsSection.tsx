@@ -133,6 +133,7 @@ export default function PortalJobDetailsSection({
                 <PortalJobApplicationModal
                     open={isApplicationModalOpen}
                     onOpenChange={setIsApplicationModalOpen}
+                    jobId={job.id}
                 />
             ) : null}
         </section>

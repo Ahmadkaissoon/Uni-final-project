@@ -40,16 +40,12 @@ type WizardStepKey =
 interface PersonWizardProfileData extends PersonProfileData {
   profilePicture: File | null;
   profileImageName: string;
-  cvFile: File | null;
-  cvFileName: string;
 }
 
 const emptyPersonWizardProfileData: PersonWizardProfileData = {
   ...emptyPersonProfileData,
   profilePicture: null,
   profileImageName: "",
-  cvFile: null,
-  cvFileName: "",
 };
 
 const wizardSteps: Array<{ key: WizardStepKey; label: string }> = [
@@ -163,7 +159,6 @@ function FieldLabel({
 function PersonProfileWizard() {
   const navigate = useNavigate();
   const profileImageInputRef = useRef<HTMLInputElement | null>(null);
-  const cvInputRef = useRef<HTMLInputElement | null>(null);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -248,16 +243,14 @@ function PersonProfileWizard() {
   };
 
   const handleFileSelection =
-    (field: "profileImageName" | "cvFileName") =>
+    (field: "profileImageName") =>
     (event: ChangeEvent<HTMLInputElement>) => {
       const selectedFile = event.target.files?.[0] ?? null;
       updateField(field, selectedFile?.name ?? "");
-      updateField(
-        field === "profileImageName" ? "profilePicture" : "cvFile",
-        selectedFile,
-      );
 
-      if (field !== "profileImageName" || !selectedFile) {
+      updateField("profilePicture", selectedFile);
+
+      if (!selectedFile) {
         return;
       }
 
@@ -277,7 +270,6 @@ function PersonProfileWizard() {
   useEffect(() => {
     writeStoredProfile<PersonProfileData & {
       profileImageName: string;
-      cvFileName: string;
     }>(
       personProfileEditorConfig.storageKey,
       {
@@ -302,7 +294,6 @@ function PersonProfileWizard() {
         professionalProfile: formData.professionalProfile,
         projectSummary: formData.projectSummary,
         profileImageName: formData.profileImageName,
-        cvFileName: formData.cvFileName,
       },
     );
     notifyPortalProfileUpdate("user");
@@ -758,14 +749,6 @@ function PersonProfileWizard() {
           </div>
 
           <section className="w-full rounded-[28px] bg-[#f7f8fb] px-4 py-6 shadow-[0_20px_70px_rgba(4,12,38,0.18)] sm:px-6 lg:px-8">
-            <input
-              ref={cvInputRef}
-              type="file"
-              accept=".pdf,.doc,.docx"
-              onChange={handleFileSelection("cvFileName")}
-              className="hidden"
-            />
-
             <div className="space-y-8">
               {renderCurrentStep()}
 
@@ -782,7 +765,7 @@ function PersonProfileWizard() {
                 </div>
               ) : null}
 
-              <div className="flex flex-wrap items-end justify-between gap-4">
+              <div className="flex flex-wrap items-end justify-start gap-4">
                 <div className="flex items-center gap-3">
                   {currentStep > 0 ? (
                     <button
@@ -806,22 +789,6 @@ function PersonProfileWizard() {
                   >
                     {currentStep === wizardSteps.length - 1 ? "إنهاء" : "التالي"}
                   </button>
-                </div>
-
-                <div className="flex flex-col items-start gap-2">
-                  <button
-                    type="button"
-                    onClick={() => cvInputRef.current?.click()}
-                    className="min-w-[150px] cursor-pointer rounded-[10px] bg-[#c96868] px-6 py-3 text-size18 font-medium text-white transition duration-200 hover:brightness-95"
-                  >
-                    رفع الCV
-                  </button>
-
-                  {formData.cvFileName ? (
-                    <span className="max-w-[260px] text-size14 text-[#70757d]">
-                      {formData.cvFileName}
-                    </span>
-                  ) : null}
                 </div>
               </div>
             </div>

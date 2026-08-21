@@ -1,6 +1,6 @@
 import type { PersonProfileData } from "../utils/portalProfileSchemas"
 import { queryClient } from "./queryClient"
-import { useGetData, useUpdateData } from "./useQueries"
+import { useGetData, usePostData, useUpdateData } from "./useQueries"
 
 interface ApiApplicationSeekerSummary {
     _id?: string
@@ -43,6 +43,38 @@ interface ApiTrainingApplicationSummaryItem {
 interface ApiApplicationListResponse<TItem> {
     data?: TItem[]
     total?: number
+}
+
+interface ApiSeekerApplicationCompany {
+    _id?: string
+    name?: string | null
+}
+
+interface ApiSeekerJobApplicationItem {
+    id?: string
+    _id?: string
+    jobId?: string | null
+    date?: string
+    jobName?: string | null
+    company?: ApiSeekerApplicationCompany | null
+    location?: string | null
+    status?: string | null
+}
+
+interface ApiSeekerTrainingApplicationItem {
+    id?: string
+    _id?: string
+    date?: string
+    createdAt?: string
+    trainingName?: string | null
+    trainingTitle?: string | null
+    trainingId?: string | null
+    internshipId?: string | null
+    company?: ApiSeekerApplicationCompany | null
+    companyName?: string | null
+    location?: string | null
+    city?: string | null
+    status?: string | null
 }
 
 interface ApiApplicantProfileLanguage {
@@ -141,11 +173,27 @@ export interface PortalCompanyApplicationDetailRecord {
     profileData: PersonProfileData
 }
 
+export interface PortalSeekerApplicationMonitorItem {
+    id: string
+    date: string
+    roleTitle: string
+    companyName: string
+    location: string
+    statusLabel: string
+    statusKey: "rejected" | "accepted" | "under_review"
+    to: string
+}
+
 export interface PortalApplicationAcceptancePayload {
     meetingType: "online" | "offline"
     date: string
     time: string
     meetingLink?: string
+}
+
+export interface PortalJobApplicationPayload {
+    jobId: string
+    cv: File
 }
 
 function getApiAssetUrl(path?: string | null) {
@@ -366,6 +414,76 @@ function mapTrainingApplicationDetail(
     }
 }
 
+function resolveApplicationStatusKey(status?: string | null) {
+    const normalizedStatus = formatValue(status).toLowerCase()
+
+    if (
+        normalizedStatus.includes("accepted") ||
+        normalizedStatus.includes("approved") ||
+        normalizedStatus.includes("مقبول")
+    ) {
+        return "accepted" as const
+    }
+
+    if (
+        normalizedStatus.includes("rejected") ||
+        normalizedStatus.includes("refused") ||
+        normalizedStatus.includes("مرفوض")
+    ) {
+        return "rejected" as const
+    }
+
+    return "under_review" as const
+}
+
+function mapSeekerJobApplication(
+    application: ApiSeekerJobApplicationItem,
+): PortalSeekerApplicationMonitorItem {
+    const applicationId = formatValue(application.id ?? application._id)
+    const jobId = formatValue(application.jobId, applicationId)
+
+    return {
+        id: applicationId,
+        date: formatDisplayDate(application.date),
+        roleTitle: formatValue(application.jobName, "وظيفة"),
+        companyName: formatValue(application.company?.name, "شركة غير محددة"),
+        location: formatValue(application.location, "غير محدد"),
+        statusLabel: formatValue(application.status, "قيد المراجعة"),
+        statusKey: resolveApplicationStatusKey(application.status),
+        to: `/jobs/watchlist?job=${encodeURIComponent(jobId)}`,
+    }
+}
+
+function mapSeekerTrainingApplication(
+    application: ApiSeekerTrainingApplicationItem,
+): PortalSeekerApplicationMonitorItem {
+    const applicationId = formatValue(application.id ?? application._id)
+    const trainingId = formatValue(
+        application.trainingId ?? application.internshipId,
+        applicationId,
+    )
+
+    return {
+        id: applicationId,
+        date: formatDisplayDate(application.date ?? application.createdAt),
+        roleTitle: formatValue(
+            application.trainingName ?? application.trainingTitle,
+            "تدريب",
+        ),
+        companyName: formatValue(
+            application.company?.name ?? application.companyName,
+            "شركة غير محددة",
+        ),
+        location: formatValue(
+            application.location ?? application.city,
+            "غير محدد",
+        ),
+        statusLabel: formatValue(application.status, "قيد المراجعة"),
+        statusKey: resolveApplicationStatusKey(application.status),
+        to: `/jobs/watchlist?training=${encodeURIComponent(trainingId)}`,
+    }
+}
+
 export function usePortalCompanyJobApplications(enabled = true) {
     const query = useGetData<ApiApplicationListResponse<ApiJobApplicationSummaryItem>>(
         "/applications/company/jobs",
@@ -379,6 +497,36 @@ export function usePortalCompanyJobApplications(enabled = true) {
     return {
         ...query,
         applications: (query.data?.data ?? []).map(mapJobApplicationSummary),
+        total: query.data?.total ?? 0,
+    }
+}
+
+export function usePortalSeekerJobApplications(enabled = true) {
+    const query = useGetData<
+        ApiApplicationListResponse<ApiSeekerJobApplicationItem>
+    >("/applications/seeker/jobs", {}, {
+        enabled,
+        queryKey: ["portal-seeker-job-applications"],
+    })
+
+    return {
+        ...query,
+        applications: (query.data?.data ?? []).map(mapSeekerJobApplication),
+        total: query.data?.total ?? 0,
+    }
+}
+
+export function usePortalSeekerTrainingApplications(enabled = true) {
+    const query = useGetData<
+        ApiApplicationListResponse<ApiSeekerTrainingApplicationItem>
+    >("/applications/seeker/trainings", {}, {
+        enabled,
+        queryKey: ["portal-seeker-training-applications"],
+    })
+
+    return {
+        ...query,
+        applications: (query.data?.data ?? []).map(mapSeekerTrainingApplication),
         total: query.data?.total ?? 0,
     }
 }
@@ -398,6 +546,34 @@ export function usePortalCompanyTrainingApplications(enabled = true) {
         ),
         total: query.data?.total ?? 0,
     }
+}
+
+export function useApplyToPortalJob(jobId: string | null) {
+    return usePostData<unknown, FormData>(
+        "/applications",
+        {},
+        {
+            toastMessages: {
+                loading: "جاري إرسال طلب التوظيف...",
+                success: "تم إرسال طلب التوظيف بنجاح",
+                error: "فشل إرسال طلب التوظيف",
+            },
+            onSuccess: () => {
+                void queryClient.invalidateQueries({
+                    queryKey: ["portal-seeker-job-applications"],
+                })
+            },
+        },
+    )
+}
+
+export function buildPortalJobApplicationFormData(
+    payload: PortalJobApplicationPayload,
+) {
+    const formData = new FormData()
+    formData.append("jobId", payload.jobId)
+    formData.append("cv", payload.cv)
+    return formData
 }
 
 export function usePortalCompanyJobApplication(

@@ -2,6 +2,10 @@ import { BriefcaseBusiness } from "lucide-react"
 import { useMemo } from "react"
 import { useSearchParams } from "react-router-dom"
 
+import {
+    usePortalSeekerJobApplications,
+    usePortalSeekerTrainingApplications,
+} from "../../api/portalApplications"
 import { usePortalJob } from "../../api/portalJobs"
 import {
     usePortalSimilarTrainings,
@@ -104,6 +108,10 @@ export default function PortalWatchlistPage({
     const [searchParams] = useSearchParams()
     const selectedJobId = searchParams.get("job")
     const selectedTrainingId = searchParams.get("training")
+    const jobApplicationsQuery = usePortalSeekerJobApplications(!selectedTrainingId)
+    const trainingApplicationsQuery = usePortalSeekerTrainingApplications(
+        !selectedJobId,
+    )
 
     const trainingsQuery = usePortalTrainings()
     const selectedJobFallback = useMemo(
@@ -208,5 +216,14 @@ export default function PortalWatchlistPage({
         )
     }
 
-    return <PortalApplicationMonitorSection />
+    return (
+        <PortalApplicationMonitorSection
+            jobApplications={jobApplicationsQuery.applications}
+            trainingApplications={trainingApplicationsQuery.applications}
+            isLoadingJobs={jobApplicationsQuery.isLoading}
+            isLoadingTrainings={trainingApplicationsQuery.isLoading}
+            isErrorJobs={jobApplicationsQuery.isError}
+            isErrorTrainings={trainingApplicationsQuery.isError}
+        />
+    )
 }

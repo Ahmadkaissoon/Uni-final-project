@@ -2,97 +2,25 @@ import { useMemo, useState } from "react"
 import { CircleAlert, Eye } from "lucide-react"
 import { Link } from "react-router-dom"
 
+import type { PortalSeekerApplicationMonitorItem } from "../../api/portalApplications"
 import { cn } from "../../utils/cn"
+import Loader from "../global/loader/Loader"
 import ReusableTable from "../global/table/ReusableTable"
 import PortalOpportunityTabs, {
     type PortalOpportunityTab,
 } from "./PortalOpportunityTabs"
-import { portalInternshipRecords } from "./portalInternshipsData"
-import { portalJobRecords } from "./portalJobsData"
 
 type ApplicationKind = PortalOpportunityTab
 type ApplicationStatus = "rejected" | "accepted" | "under_review"
 
-interface ApplicationRecord {
-    id: number
-    date: string
-    roleTitle: string
-    companyName: string
-    city: string
-    status: ApplicationStatus
-    tone: "cyan" | "navy"
-    to: string
+interface PortalApplicationMonitorSectionProps {
+    jobApplications?: PortalSeekerApplicationMonitorItem[]
+    trainingApplications?: PortalSeekerApplicationMonitorItem[]
+    isLoadingJobs?: boolean
+    isLoadingTrainings?: boolean
+    isErrorJobs?: boolean
+    isErrorTrainings?: boolean
 }
-
-const jobApplications: ApplicationRecord[] = [
-    {
-        id: 1,
-        date: "2/2/2025",
-        roleTitle: portalJobRecords[0]?.jobTitle ?? "مصمم غرافيك",
-        companyName: portalJobRecords[0]?.companyWebsite ?? "AL-MATEN.CO",
-        city: portalJobRecords[0]?.location ?? "دمشق",
-        status: "rejected",
-        tone: "cyan",
-        to: `/jobs/watchlist?job=${portalJobRecords[0]?.id ?? ""}`,
-    },
-    {
-        id: 2,
-        date: "2/2/2025",
-        roleTitle: portalJobRecords[2]?.jobTitle ?? "مطور واجهات",
-        companyName: portalJobRecords[2]?.companyWebsite ?? "ALBAYAN.DEV",
-        city: portalJobRecords[2]?.location ?? "حمص",
-        status: "accepted",
-        tone: "navy",
-        to: `/jobs/watchlist?job=${portalJobRecords[2]?.id ?? ""}`,
-    },
-    {
-        id: 3,
-        date: "2/2/2025",
-        roleTitle: portalJobRecords[3]?.jobTitle ?? "تسويق رقمي",
-        companyName: portalJobRecords[3]?.companyWebsite ?? "ALRIYADA.ADS",
-        city: portalJobRecords[3]?.location ?? "اللاذقية",
-        status: "under_review",
-        tone: "cyan",
-        to: `/jobs/watchlist?job=${portalJobRecords[3]?.id ?? ""}`,
-    },
-]
-
-const trainingApplications: ApplicationRecord[] = [
-    {
-        id: 1,
-        date: "8/3/2025",
-        roleTitle: portalInternshipRecords[0]?.trainingType ?? "متدرب HR",
-        companyName:
-            portalInternshipRecords[0]?.companyWebsite ?? "AL-MATEN.CO",
-        city: portalInternshipRecords[0]?.location ?? "حمص - سوريا",
-        status: "under_review",
-        tone: "cyan",
-        to: `/jobs/watchlist?training=${portalInternshipRecords[0]?.id ?? ""}`,
-    },
-    {
-        id: 2,
-        date: "1/3/2025",
-        roleTitle:
-            portalInternshipRecords[2]?.trainingType ?? "متدرب تطوير واجهات",
-        companyName:
-            portalInternshipRecords[2]?.companyWebsite ?? "ALMADAAR.DEV",
-        city: portalInternshipRecords[2]?.location ?? "حلب - سوريا",
-        status: "accepted",
-        tone: "navy",
-        to: `/jobs/watchlist?training=${portalInternshipRecords[2]?.id ?? ""}`,
-    },
-    {
-        id: 3,
-        date: "25/2/2025",
-        roleTitle:
-            portalInternshipRecords[4]?.trainingType ?? "متدرب تسويق رقمي",
-        companyName: portalInternshipRecords[4]?.companyWebsite ?? "IBDAA.ADS",
-        city: portalInternshipRecords[4]?.location ?? "اللاذقية - سوريا",
-        status: "rejected",
-        tone: "cyan",
-        to: `/jobs/watchlist?training=${portalInternshipRecords[4]?.id ?? ""}`,
-    },
-]
 
 const statusConfig: Record<
     ApplicationStatus,
@@ -118,7 +46,13 @@ const statusConfig: Record<
     },
 }
 
-function StatusBadge({ status }: { status: ApplicationStatus }) {
+function StatusBadge({
+    status,
+    label,
+}: {
+    status: ApplicationStatus
+    label: string
+}) {
     const currentStatus = statusConfig[status]
 
     return (
@@ -128,13 +62,13 @@ function StatusBadge({ status }: { status: ApplicationStatus }) {
                 currentStatus.className,
             )}
         >
-            {currentStatus.label}
+            {label || currentStatus.label}
         </span>
     )
 }
 
-function DetailsAction({ record }: { record: ApplicationRecord }) {
-    const currentStatus = statusConfig[record.status]
+function DetailsAction({ record }: { record: PortalSeekerApplicationMonitorItem }) {
+    const currentStatus = statusConfig[record.statusKey]
 
     return (
         <Link
@@ -145,7 +79,7 @@ function DetailsAction({ record }: { record: ApplicationRecord }) {
             )}
             aria-label={`عرض تفاصيل الطلب ${record.id}`}
         >
-            {record.status === "under_review" ? (
+            {record.statusKey === "under_review" ? (
                 <Eye className="size-4" />
             ) : (
                 <CircleAlert className="size-4" />
@@ -154,11 +88,20 @@ function DetailsAction({ record }: { record: ApplicationRecord }) {
     )
 }
 
-export default function PortalApplicationMonitorSection() {
+export default function PortalApplicationMonitorSection({
+    jobApplications = [],
+    trainingApplications = [],
+    isLoadingJobs = false,
+    isLoadingTrainings = false,
+    isErrorJobs = false,
+    isErrorTrainings = false,
+}: PortalApplicationMonitorSectionProps) {
     const [activeKind, setActiveKind] = useState<ApplicationKind>("jobs")
 
     const records =
         activeKind === "jobs" ? jobApplications : trainingApplications
+    const isLoading = activeKind === "jobs" ? isLoadingJobs : isLoadingTrainings
+    const isError = activeKind === "jobs" ? isErrorJobs : isErrorTrainings
 
     const columns = useMemo(
         () => [
@@ -181,24 +124,27 @@ export default function PortalApplicationMonitorSection() {
                 className: "whitespace-nowrap",
             },
             {
-                id: "city",
-                header: "المدينة",
-                value: "city",
+                id: "location",
+                header: "المكان",
+                value: "location",
                 className: "whitespace-nowrap",
             },
             {
                 id: "status",
                 header: "الحالة",
                 className: "whitespace-nowrap",
-                cell: (record: ApplicationRecord) => (
-                    <StatusBadge status={record.status} />
+                cell: (record: PortalSeekerApplicationMonitorItem) => (
+                    <StatusBadge
+                        status={record.statusKey}
+                        label={record.statusLabel}
+                    />
                 ),
             },
             {
                 id: "actions",
                 header: "الإجراءات",
                 className: "whitespace-nowrap",
-                cell: (record: ApplicationRecord) => (
+                cell: (record: PortalSeekerApplicationMonitorItem) => (
                     <DetailsAction record={record} />
                 ),
             },
@@ -209,7 +155,7 @@ export default function PortalApplicationMonitorSection() {
     const rowBackgrounds = useMemo(
         () =>
             records.map((record) =>
-                record.tone === "cyan" ? "#63b9d0" : "#324c6f",
+                record.statusKey === "accepted" ? "#324c6f" : "#63b9d0",
             ),
         [records],
     )
@@ -236,17 +182,27 @@ export default function PortalApplicationMonitorSection() {
                         />
                     </div>
 
-                    <ReusableTable
-                        data={records}
-                        columns={columns}
-                        showRowNumbers
-                        primaryColor="#324c6f"
-                        rowBackgrounds={rowBackgrounds}
-                        textColor="#ffffff"
-                        bodyTextColor="#ffffff"
-                        alternateRowColors={false}
-                        emptyText="لا توجد طلبات لعرضها حالياً."
-                    />
+                    {isLoading ? (
+                        <div className="flex min-h-[260px] items-center justify-center rounded-[16px] bg-white/80">
+                            <Loader size={8} />
+                        </div>
+                    ) : (
+                        <ReusableTable
+                            data={records}
+                            columns={columns}
+                            showRowNumbers
+                            primaryColor="#324c6f"
+                            rowBackgrounds={rowBackgrounds}
+                            textColor="#ffffff"
+                            bodyTextColor="#ffffff"
+                            alternateRowColors={false}
+                            emptyText={
+                                isError
+                                    ? "تعذر تحميل الطلبات حالياً."
+                                    : "لا توجد طلبات لعرضها حالياً."
+                            }
+                        />
+                    )}
                 </div>
             </div>
         </section>

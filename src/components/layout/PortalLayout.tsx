@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react"
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import { Bell, ChevronDown, Menu, X } from "lucide-react"
 
 import blueLogo from "../../assets/icons/blue_logo.png"
@@ -253,12 +253,36 @@ export function PortalLayout({
     const [openDropdownId, setOpenDropdownId] = useState<string | null>(
         activeParentItem?.children ? activeParentItem.id : null,
     )
+    const headerRef = useRef<HTMLElement | null>(null)
 
     useEffect(() => {
         setOpenDropdownId(
             activeParentItem?.children ? activeParentItem.id : null,
         )
     }, [activeParentItem, role])
+
+    useEffect(() => {
+        if (!openDropdownId) {
+            return
+        }
+
+        function handlePointerDown(event: PointerEvent) {
+            if (
+                event.target instanceof Node &&
+                headerRef.current?.contains(event.target)
+            ) {
+                return
+            }
+
+            setOpenDropdownId(null)
+        }
+
+        document.addEventListener("pointerdown", handlePointerDown)
+
+        return () => {
+            document.removeEventListener("pointerdown", handlePointerDown)
+        }
+    }, [openDropdownId])
 
     const closeMobileMenu = () => setMobileMenuOpen(false)
 
@@ -298,7 +322,10 @@ export function PortalLayout({
             dir="rtl"
         >
             <div className="flex min-h-svh flex-col">
-                <header className="sticky top-0 z-30 bg-[linear-gradient(90deg,#5679cf_0%,#426cc6_46%,var(--primary)_78%,var(--primary)_100%)] shadow-navbar-shadow">
+                <header
+                    ref={headerRef}
+                    className="sticky top-0 z-30 bg-[linear-gradient(90deg,#5679cf_0%,#426cc6_46%,var(--primary)_78%,var(--primary)_100%)] shadow-navbar-shadow"
+                >
                     <div
                         className={cn(
                             shellWidthClass,
