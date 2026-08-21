@@ -6,6 +6,7 @@ import ReusableTable from "../../components/global/table/ReusableTable"
 import { Button } from "../../components/global/ui/button"
 import PortalCompanyJobForm from "../../components/portal/PortalCompanyJobForm"
 import PortalCompanyTrainingForm from "../../components/portal/PortalCompanyTrainingForm"
+import PortalDeleteConfirmDialog from "../../components/portal/PortalDeleteConfirmDialog"
 import PortalJobDetailsSection from "../../components/portal/PortalJobDetailsSection"
 import PortalOpportunityTabs, {
     type PortalOpportunityTab,
@@ -25,6 +26,7 @@ interface PortalCompanyOpportunitiesPageProps {
 
 type OpportunityStatusTone = "success" | "warning" | "neutral"
 type ManagementPanelMode = "details" | "edit"
+type PendingDeleteState = { tab: PortalOpportunityTab; itemId: string } | null
 
 interface ManagedJobItem {
     id: string
@@ -230,6 +232,7 @@ export default function PortalCompanyOpportunitiesPage({
     const [trainings, setTrainings] =
         useState<ManagedTrainingItem[]>(initialManagedTrainings)
     const [activePanel, setActivePanel] = useState<ActivePanelState | null>(null)
+    const [pendingDelete, setPendingDelete] = useState<PendingDeleteState>(null)
     const panelRef = useRef<HTMLDivElement | null>(null)
 
     useEffect(() => {
@@ -326,7 +329,9 @@ export default function PortalCompanyOpportunitiesPage({
                     <IconActionButton
                         label="حذف الوظيفة"
                         colorClassName="text-[#ff6a61] hover:bg-white/12"
-                        onClick={() => handleDeleteJob(row.id)}
+                        onClick={() =>
+                            setPendingDelete({ tab: "jobs", itemId: row.id })
+                        }
                     >
                         <Trash2 className="size-[18px]" />
                     </IconActionButton>
@@ -424,7 +429,12 @@ export default function PortalCompanyOpportunitiesPage({
                     <IconActionButton
                         label="حذف التدريب"
                         colorClassName="text-[#ff6a61] hover:bg-white/12"
-                        onClick={() => handleDeleteTraining(row.id)}
+                        onClick={() =>
+                            setPendingDelete({
+                                tab: "trainings",
+                                itemId: row.id,
+                            })
+                        }
                     >
                         <Trash2 className="size-[18px]" />
                     </IconActionButton>
@@ -439,23 +449,16 @@ export default function PortalCompanyOpportunitiesPage({
     }
 
     function handleDeleteJob(itemId: string) {
-        if (!window.confirm("هل تريد حذف هذه الوظيفة من القائمة؟")) {
-            return
-        }
-
         setJobs((currentJobs) => currentJobs.filter((item) => item.id !== itemId))
         setActivePanel((currentPanel) =>
             currentPanel?.tab === "jobs" && currentPanel.itemId === itemId
                 ? null
                 : currentPanel,
         )
+        setPendingDelete(null)
     }
 
     function handleDeleteTraining(itemId: string) {
-        if (!window.confirm("هل تريد حذف هذا التدريب من القائمة؟")) {
-            return
-        }
-
         setTrainings((currentTrainings) =>
             currentTrainings.filter((item) => item.id !== itemId),
         )
@@ -464,6 +467,7 @@ export default function PortalCompanyOpportunitiesPage({
                 ? null
                 : currentPanel,
         )
+        setPendingDelete(null)
     }
 
     function handleJobUpdate(updatedFormData: CompanyJobFormData) {
@@ -669,6 +673,42 @@ export default function PortalCompanyOpportunitiesPage({
                     ) : null}
                 </div>
             </div>
+
+            <PortalDeleteConfirmDialog
+                open={Boolean(pendingDelete)}
+                title={
+                    pendingDelete?.tab === "trainings"
+                        ? "حذف التدريب؟"
+                        : "حذف الوظيفة؟"
+                }
+                description={
+                    pendingDelete?.tab === "trainings"
+                        ? "سيتم حذف هذا التدريب من القائمة. لا يمكن التراجع عن هذه العملية بعد التأكيد."
+                        : "سيتم حذف هذه الوظيفة من القائمة. لا يمكن التراجع عن هذه العملية بعد التأكيد."
+                }
+                confirmLabel={
+                    pendingDelete?.tab === "trainings"
+                        ? "حذف التدريب"
+                        : "حذف الوظيفة"
+                }
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setPendingDelete(null)
+                    }
+                }}
+                onConfirm={() => {
+                    if (!pendingDelete) {
+                        return
+                    }
+
+                    if (pendingDelete.tab === "trainings") {
+                        handleDeleteTraining(pendingDelete.itemId)
+                        return
+                    }
+
+                    handleDeleteJob(pendingDelete.itemId)
+                }}
+            />
         </section>
     )
 }

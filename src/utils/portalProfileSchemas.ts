@@ -195,7 +195,7 @@ export const companyProfileSections: Array<
     fields: [
       {
         name: "hiringJobTypes",
-        label: "نوع الوظائف التي توظف لها!",
+        label: "نوع الوظائف التي توظف لها",
       },
       {
         name: "monthlyOpenings",

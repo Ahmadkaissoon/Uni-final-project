@@ -19,6 +19,7 @@ export interface PortalCompanyDirectoryItem {
     monthlyJobPostsPlanned?: number
     companyRecommendations?: string
     licenseUrl?: string
+    licenseFilename?: string
     matchKeys?: string[]
     to: string
 }

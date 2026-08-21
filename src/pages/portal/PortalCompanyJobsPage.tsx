@@ -15,6 +15,7 @@ import { usePortalAuthProfile } from "../../api/portalAuthProfile"
 import companyImage from "../../assets/common/company_img.png"
 import ReusableTable from "../../components/global/table/ReusableTable"
 import { Button } from "../../components/global/ui/button"
+import PortalDeleteConfirmDialog from "../../components/portal/PortalDeleteConfirmDialog"
 import PortalCompanyJobForm from "../../components/portal/PortalCompanyJobForm"
 import PortalJobDetailsSection from "../../components/portal/PortalJobDetailsSection"
 import PortalOpportunityTabs from "../../components/portal/PortalOpportunityTabs"
@@ -53,6 +54,7 @@ export default function PortalCompanyJobsPage({
     const navigate = useNavigate()
     const panelRef = useRef<HTMLDivElement | null>(null)
     const [activePanel, setActivePanel] = useState<ActivePanelState | null>(null)
+    const [pendingDeleteJobId, setPendingDeleteJobId] = useState<string | null>(null)
 
     const companyJobsQuery = usePortalCompanyJobs()
     const companyProfileQuery = usePortalAuthProfile("company")
@@ -202,9 +204,7 @@ export default function PortalCompanyJobsPage({
                     <IconActionButton
                         label="حذف الوظيفة"
                         colorClassName="text-[#ff6a61] hover:bg-white/12"
-                        onClick={() => {
-                            void handleDeleteJob(row.id)
-                        }}
+                        onClick={() => setPendingDeleteJobId(row.id)}
                     >
                         <Trash2 className="size-[18px]" />
                     </IconActionButton>
@@ -214,17 +214,12 @@ export default function PortalCompanyJobsPage({
     ]
 
     async function handleDeleteJob(jobId: string) {
-        const shouldDelete = window.confirm("هل تريد حذف هذه الوظيفة من القائمة؟")
-
-        if (!shouldDelete) {
-            return
-        }
-
         await deleteJobMutation.mutateAsync(`/jobs/${encodeURIComponent(jobId)}`)
 
         setActivePanel((currentPanel) =>
             currentPanel?.itemId === jobId ? null : currentPanel,
         )
+        setPendingDeleteJobId(null)
     }
 
     async function handleJobUpdate(formData: CompanyJobFormData) {
@@ -400,6 +395,24 @@ export default function PortalCompanyJobsPage({
                     ) : null}
                 </div>
             </div>
+
+            <PortalDeleteConfirmDialog
+                open={Boolean(pendingDeleteJobId)}
+                title="حذف الوظيفة؟"
+                description="سيتم حذف هذه الوظيفة من القائمة. لا يمكن التراجع عن هذه العملية بعد التأكيد."
+                confirmLabel="حذف الوظيفة"
+                isDeleting={deleteJobMutation.isPending}
+                onOpenChange={(open) => {
+                    if (!open && !deleteJobMutation.isPending) {
+                        setPendingDeleteJobId(null)
+                    }
+                }}
+                onConfirm={() => {
+                    if (pendingDeleteJobId) {
+                        return handleDeleteJob(pendingDeleteJobId)
+                    }
+                }}
+            />
         </section>
     )
 }

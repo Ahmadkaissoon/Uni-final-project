@@ -54,6 +54,35 @@ function getDetailValue(
     )
 }
 
+function formatTraineeLevelLabel(value: string) {
+    switch (value.trim().toLowerCase()) {
+        case "beginner":
+            return "مبتدئ"
+        case "intermediate":
+            return "متوسط"
+        case "advanced":
+            return "متقدم"
+        default:
+            return value.trim()
+    }
+}
+
+function normalizeTraineeLevelValue(value: string) {
+    switch (value.trim().toLowerCase()) {
+        case "beginner":
+        case "مبتدئ":
+            return "beginner"
+        case "intermediate":
+        case "متوسط":
+            return "intermediate"
+        case "advanced":
+        case "متقدم":
+            return "advanced"
+        default:
+            return value.trim()
+    }
+}
+
 export function buildCompanyTrainingDetailColumns(
     formData: CompanyTrainingFormData,
 ): PortalTrainingDetailEntry[][] {
@@ -62,7 +91,9 @@ export function buildCompanyTrainingDetailColumns(
             {
                 id: "trainee-level",
                 label: "مستوى المتدربين",
-                value: formData.traineeLevel.trim() || "مبتدئ إلى متوسط",
+                value:
+                    formatTraineeLevelLabel(formData.traineeLevel) ||
+                    "مبتدئ إلى متوسط",
             },
             {
                 id: "training-schedule",
@@ -85,21 +116,6 @@ export function buildCompanyTrainingDetailColumns(
                 id: "training-location",
                 label: "مكان التدريب",
                 value: formData.trainingLocation.trim() || "دمشق - سوريا",
-            },
-            {
-                id: "training-language",
-                label: "لغة التدريب",
-                value: "عربي | إنكليزي",
-            },
-            {
-                id: "training-capacity",
-                label: "عدد المتدربين المتوقع",
-                value: "12 متدربًا",
-            },
-            {
-                id: "completion-certificate",
-                label: "شهادة الإتمام",
-                value: "متاحة بعد إنهاء البرنامج",
             },
         ],
         [
@@ -161,7 +177,9 @@ export function trainingRecordToCompanyTrainingFormData(
     return {
         trainingCategory: record.trainingCategory,
         trainingTitle: record.trainingTitle,
-        traineeLevel: getDetailValue(record.detailColumns, "trainee-level"),
+        traineeLevel: normalizeTraineeLevelValue(
+            getDetailValue(record.detailColumns, "trainee-level"),
+        ),
         trainingDuration: getDetailValue(record.detailColumns, "training-duration"),
         trainingSchedule: getDetailValue(record.detailColumns, "training-schedule"),
         trainingReward: getDetailValue(record.detailColumns, "training-reward"),

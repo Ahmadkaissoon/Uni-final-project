@@ -86,6 +86,7 @@ export default function PortalAllJobsPage({ page }: PortalAllJobsPageProps) {
     const selectedCompanyKey = normalizePortalCompanyValue(
         searchParams.get("company"),
     )
+    const isCompanyJobsView = Boolean(selectedCompanyKey)
     const jobsQuery = usePortalJobs()
     const filteredJobs = selectedCompanyKey
         ? jobsQuery.jobs.filter((job) => {
@@ -102,10 +103,10 @@ export default function PortalAllJobsPage({ page }: PortalAllJobsPageProps) {
     const jobQuery = usePortalJob(selectedJobId, selectedJobListing)
     const selectedJob = jobQuery.job
     const selectedCompanyName = filteredJobs[0]?.companyName
-    const listingTitle = selectedCompanyName
+    const listingTitle = isCompanyJobsView && selectedCompanyName
         ? `وظائف ${selectedCompanyName}`
         : page.title
-    const listingDescription = selectedCompanyName
+    const listingDescription = isCompanyJobsView && selectedCompanyName
         ? `استكشف الوظائف المتاحة لدى ${selectedCompanyName} وتعرّف على الفرص المنشورة من قبل هذه الشركة.`
         : page.description
 

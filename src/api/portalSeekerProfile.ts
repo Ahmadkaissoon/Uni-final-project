@@ -27,7 +27,6 @@ export interface PortalSeekerProfileFormData {
   personalWebsite: string;
   linkedin: string;
   github: string;
-  behance: string;
   languages: PortalSeekerLanguage[];
 }
 
@@ -105,7 +104,6 @@ export const emptyPortalSeekerProfileFormData: PortalSeekerProfileFormData = {
   personalWebsite: "",
   linkedin: "",
   github: "",
-  behance: "",
   languages: [{ language: "", level: "basic" }],
 };
 
@@ -219,7 +217,6 @@ export function mapApiSeekerProfileToPortalSeekerProfileData(
       personalWebsite: formatValue(seekerProfile.personalWebsite),
       linkedin: formatValue(seekerProfile.linkedin),
       github: formatValue(seekerProfile.github),
-      behance: formatValue(seekerProfile.behance),
       languages: normalizeLanguages(seekerProfile.languages),
     },
   };
@@ -255,7 +252,6 @@ export function buildPortalSeekerProfilePayload({
     personalWebsite: formData.personalWebsite.trim(),
     linkedin: formData.linkedin.trim(),
     github: formData.github.trim(),
-    behance: formData.behance.trim(),
     ...(removeProfilePicture ? { removeProfilePicture: true } : {}),
   };
 

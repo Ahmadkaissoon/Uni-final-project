@@ -1,3 +1,4 @@
+import { ArrowLeft, BookOpenText } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Button } from "../global/ui/button"
@@ -29,18 +30,25 @@ export default function PortalStudyCard({
     className,
 }: PortalStudyCardProps) {
     const cardClassName = cn(
-        "portal-category-card-shadow flex min-h-[212px] flex-col items-center justify-center rounded-[22px] bg-white px-6 py-8 text-center sm:px-10 sm:py-10",
+        "portal-category-card-shadow flex min-h-[260px] flex-col rounded-[18px] border border-[#e2ebf6] bg-white px-6 py-7 text-right transition duration-200 hover:-translate-y-1 hover:shadow-[0_18px_46px_rgb(35_61_103_/_0.14)] sm:px-7",
         className,
     )
 
     const actionButtonClassName =
-        "inline-flex h-[40px] min-w-[116px] cursor-pointer items-center justify-center rounded-[8px] border border-[#3b63c6] bg-[#5f86dd] !px-4 !py-2 !text-size16 !font-bold !text-white hover:brightness-105"
+        "inline-flex min-h-[42px] items-center justify-center rounded-[8px] border border-[#3b63c6] bg-[#5f86dd] px-4 py-2 text-size16 font-bold text-white transition duration-200 hover:brightness-105"
 
     const actionButton = (() => {
+        const content = (
+            <>
+                {actionLabel}
+                <ArrowLeft className="mr-2 size-4" />
+            </>
+        )
+
         if (to) {
             return (
                 <Link to={to} className={actionButtonClassName}>
-                    {actionLabel}
+                    {content}
                 </Link>
             )
         }
@@ -53,7 +61,7 @@ export default function PortalStudyCard({
                     rel={rel}
                     className={actionButtonClassName}
                 >
-                    {actionLabel}
+                    {content}
                 </a>
             )
         }
@@ -66,27 +74,32 @@ export default function PortalStudyCard({
                 onClick={onAction}
                 className={actionButtonClassName}
             >
-                {actionLabel}
+                {content}
             </Button>
         )
     })()
 
     return (
         <article className={cardClassName} dir="rtl">
-            <div className="flex w-full max-w-[260px] flex-col items-center text-center">
-                <h3 className="m-0 text-size30 font-bold leading-[1.25] text-[#30333a]">
-                    {companyName}
+            <div className="flex h-full flex-col">
+                <div className="mb-5 flex items-center justify-between gap-4">
+                    <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-warning-color/10 text-warning-color">
+                        <BookOpenText className="size-5" />
+                    </span>
+                    <span className="rounded-full bg-[#f5f8fc] px-3 py-1 text-size13 font-bold text-[#5e6a7c]">
+                        {companyName}
+                    </span>
+                </div>
+
+                <h3 className="m-0 text-size24 font-bold leading-[1.45] text-[#233047] sm:text-size28">
+                    {studyTitle}
                 </h3>
 
-                <p className="mt-7 text-size20 font-bold leading-[1.35] text-[#d44b2e]">
-                    {studyTitle}
-                </p>
-
-                <p className="mt-6 line-clamp-2 text-size18 font-semibold leading-[1.8] text-[#3d4148]">
+                <p className="mt-4 line-clamp-3 text-size16 font-medium leading-[1.9] text-[#5a6678] sm:text-size18">
                     {excerpt}
                 </p>
 
-                <div className="mt-5">{actionButton}</div>
+                <div className="mt-auto pt-5">{actionButton}</div>
             </div>
         </article>
     )

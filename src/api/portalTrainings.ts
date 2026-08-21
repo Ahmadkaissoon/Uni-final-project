@@ -21,14 +21,18 @@ interface ApiTrainingCompany {
 }
 
 interface ApiTraining {
-    _id: string
+    _id?: string
+    id?: string
     companyId?: string
+    date?: string
     title?: string
+    trainingName?: string
     trainerLevel?: string
     category?: string
     categoryName?: string
     fieldOfTraining?: string
     trainingbonus?: string
+    location?: string
     trainingLocation?: string
     trainingdays?: string
     trainingDuration?: string
@@ -115,6 +119,22 @@ function resolveTrainerLevel(level?: string) {
             return "متقدم"
         default:
             return formatSentenceValue(level)
+    }
+}
+
+function resolveTrainerLevelFormValue(level?: string) {
+    switch (`${level ?? ""}`.trim().toLowerCase()) {
+        case "beginner":
+        case "مبتدئ":
+            return "beginner"
+        case "intermediate":
+        case "متوسط":
+            return "intermediate"
+        case "advanced":
+        case "متقدم":
+            return "advanced"
+        default:
+            return formatValue(level, "")
     }
 }
 
@@ -228,16 +248,16 @@ function resolveApiTrainingTotal(
     return response?.total ?? response?.data?.length ?? 0
 }
 
-function resolveApiTrainingDetail(response: ApiTrainingDetailResponse | undefined) {
+function resolveApiTrainingDetail(
+    response: ApiTrainingDetailResponse | undefined,
+): ApiTraining | undefined {
     if (!response) {
         return undefined
     }
 
-    if ("_id" in response) {
-        return response
-    }
-
-    return response.data
+    return "data" in response
+        ? (response as { data?: ApiTraining }).data
+        : (response as ApiTraining)
 }
 
 function isInternshipRecord(
@@ -416,7 +436,7 @@ function mapApiTrainingToCompanyTrainingFormData(
             ),
         ),
         trainingTitle: formatValue(training.title, "فرصة تدريب"),
-        traineeLevel: formatValue(resolveTrainerLevel(training.trainerLevel)),
+        traineeLevel: resolveTrainerLevelFormValue(training.trainerLevel),
         trainingDuration: formatValue(
             formatSentenceValue(training.trainingDuration),
         ),
@@ -472,11 +492,14 @@ function mapApiTrainingToPortalCompanyTrainingSummaryItem(
     training: ApiTraining,
 ): PortalCompanyTrainingSummaryItem {
     return {
-        id: training._id,
-        date: formatCompanyListDate(training.createdAt),
-        trainingName: formatValue(training.title, "فرصة تدريب"),
+        id: formatValue(training.id ?? training._id),
+        date: formatCompanyListDate(training.date ?? training.createdAt),
+        trainingName: formatValue(
+            training.trainingName ?? training.title,
+            "فرصة تدريب",
+        ),
         location: formatValue(
-            formatTrainingLocation(training.trainingLocation),
+            training.location ?? formatTrainingLocation(training.trainingLocation),
         ),
         status: formatValue(training.status, "غير محدد"),
     }

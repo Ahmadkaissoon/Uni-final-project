@@ -52,10 +52,6 @@ export default function PortalTrainingDetailsSection({
                                 <span className="break-words">
                                     {training.companyLegalName}
                                 </span>
-                                |
-                                <span className="break-all">
-                                    {training.companyWebsite}
-                                </span>
                             </div>
                         </div>
                     </div>

@@ -13,7 +13,11 @@ export default function PortalCareerGuidancePage({
             key={page.id}
             role={page.role}
             title={page.title}
-            description="يمكنك التحدث وسؤال الذكاء الصناعي لمساعدتك خلال هذه الواجهة"
+            description={
+                page.role === "company"
+                    ? "استخدم الإرشاد الوظيفي لتحسين إعلاناتك، فرز المتقدمين، وتجربة المرشحين داخل شركتك."
+                    : "استخدم الإرشاد الوظيفي لتحسين سيرتك الذاتية، التحضير للمقابلات، واختيار الفرص الأنسب لك."
+            }
         />
     )
 }

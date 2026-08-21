@@ -1,9 +1,9 @@
 import {
     ArrowRight,
     BookOpenText,
-    Building2,
     CalendarDays,
     Clock3,
+    FileText,
     Globe,
     Sparkles,
 } from "lucide-react"
@@ -24,7 +24,7 @@ const sidebarMetaClassName =
 
 export default function PortalStudyDetailsSection({
     title = "الدراسات",
-    description = "اطلع على كامل الدراسة والتفاصيل التي نشرتها الشركة ضمن منصة وظيفتي.",
+    description = "اطلع على المقال الكامل والتفاصيل التي نشرتها الشركة ضمن منصة وظيفتي.",
     study,
     relatedStudies = [],
 }: PortalStudyDetailsSectionProps) {
@@ -37,14 +37,14 @@ export default function PortalStudyDetailsSection({
                             <h1 className="m-0 py-2 text-[32px] font-bold leading-[1.3] text-black sm:text-[42px]">
                                 {title}
                             </h1>
-                            <p className="mt-4 mb-0 max-w-[36ch] text-size20 font-medium leading-[1.95] text-black sm:text-size24">
+                            <p className="mt-4 mb-0 max-w-[42rem] text-size18 font-medium leading-[1.95] text-black sm:text-size22">
                                 {description}
                             </p>
                         </div>
                     </div>
 
-                    <div className="overflow-hidden rounded-[30px] bg-[radial-gradient(circle_at_top_right,#6c93ef_0%,#2853b5_35%,#14316e_100%)] shadow-[0_24px_60px_rgba(14,35,59,0.18)]">
-                        <div className="grid gap-8 px-6 py-8 text-white sm:px-8 sm:py-10 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-end lg:px-10">
+                    <div className="overflow-hidden rounded-[26px] bg-[linear-gradient(135deg,#214a98_0%,#3b63c6_52%,#6b91e8_100%)] shadow-[0_24px_60px_rgba(14,35,59,0.18)]">
+                        <div className="grid gap-8 px-6 py-8 text-white sm:px-8 sm:py-10 lg:grid-cols-[minmax(0,1fr)_180px] lg:items-center lg:px-10">
                             <div className="text-right">
                                 <div className="mb-4 flex flex-wrap justify-end gap-2">
                                     {study.tags.map((tag) => (
@@ -61,11 +61,11 @@ export default function PortalStudyDetailsSection({
                                     {study.companyName}
                                 </p>
 
-                                <h2 className="mt-3 mb-0 max-w-[18ch] text-[28px] font-bold leading-[1.45] sm:text-[34px] lg:text-[40px]">
+                                <h2 className="mt-3 mb-0 max-w-[22ch] text-[28px] font-bold leading-[1.45] sm:text-[34px] lg:text-[40px]">
                                     {study.studyTitle}
                                 </h2>
 
-                                <p className="mt-5 mb-0 max-w-[58ch] text-size18 font-medium leading-[1.9] text-white/90 sm:text-size20">
+                                <p className="mt-5 mb-0 max-w-[62ch] text-size18 font-medium leading-[1.9] text-white/90">
                                     {study.intro}
                                 </p>
 
@@ -86,21 +86,19 @@ export default function PortalStudyDetailsSection({
                             </div>
 
                             <div className="hidden lg:flex lg:justify-start">
-                                <div className="flex h-[188px] w-full max-w-[188px] items-center justify-center rounded-[28px] border border-white/15 bg-white/10 backdrop-blur-sm">
-                                    <div className="flex size-[126px] items-center justify-center rounded-full bg-white/14 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
-                                        <Building2 className="size-12 text-white" />
-                                    </div>
+                                <div className="flex size-[150px] items-center justify-center rounded-[26px] border border-white/15 bg-white/10 backdrop-blur-sm">
+                                    <FileText className="size-14 text-white" />
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px] xl:gap-10">
-                        <article className="portal-category-card-shadow rounded-[26px] bg-white px-6 py-7 text-right sm:px-8 sm:py-9 lg:px-10">
+                        <article className="portal-category-card-shadow rounded-[22px] bg-white px-6 py-7 text-right sm:px-8 sm:py-9 lg:px-10">
                             <div className="mb-8 flex items-center justify-between gap-4 border-b border-[#edf1f6] pb-6">
                                 <div className="text-right">
                                     <p className="m-0 text-size14 font-bold text-warning-color">
-                                        {study.companyName}
+                                        المقال الكامل
                                     </p>
                                     <h3 className="mt-2 mb-0 text-[24px] font-bold leading-[1.45] text-[#222935] sm:text-[30px]">
                                         {study.studyTitle}
@@ -133,13 +131,13 @@ export default function PortalStudyDetailsSection({
                                             )}
 
                                             {section.quote ? (
-                                                <blockquote className="m-0 rounded-[18px] border-r-[4px] border-warning-color bg-[#f8fbff] px-5 py-4 text-size18 font-bold leading-[1.9] text-[#24407b]">
+                                                <blockquote className="m-0 rounded-[16px] border-r-[4px] border-warning-color bg-[#f8fbff] px-5 py-4 text-size18 font-bold leading-[1.9] text-[#24407b]">
                                                     {section.quote}
                                                 </blockquote>
                                             ) : null}
 
                                             {section.bullets?.length ? (
-                                                <ul className="m-0 grid gap-3 pr-5 text-size18 font-medium text-[#3c4654] marker:text-warning-color">
+                                                <ul className="m-0 grid gap-3 pr-5 marker:text-warning-color">
                                                     {section.bullets.map(
                                                         (bullet) => (
                                                             <li key={bullet}>
@@ -156,7 +154,7 @@ export default function PortalStudyDetailsSection({
                         </article>
 
                         <aside className="grid content-start gap-6">
-                            <div className="portal-category-card-shadow rounded-[24px] bg-white p-6 text-right sm:p-7">
+                            <div className="portal-category-card-shadow rounded-[22px] bg-white p-6 text-right">
                                 <div className="mb-5 flex items-center justify-between gap-4">
                                     <Sparkles className="size-8 text-warning-color" />
                                     <h3 className="m-0 text-[22px] font-bold text-[#253044]">
@@ -202,7 +200,7 @@ export default function PortalStudyDetailsSection({
                                 </Link>
                             </div>
 
-                            <div className="portal-category-card-shadow rounded-[24px] bg-white p-6 text-right sm:p-7">
+                            <div className="portal-category-card-shadow rounded-[22px] bg-white p-6 text-right">
                                 <h3 className="m-0 text-[22px] font-bold text-[#253044]">
                                     مؤشرات سريعة
                                 </h3>

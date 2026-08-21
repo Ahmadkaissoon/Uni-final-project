@@ -109,10 +109,6 @@ export default function PortalInternshipDetailsSection({
                                 <span className="break-words">
                                     {internship.companyLegalName}
                                 </span>
-                                |
-                                <span className="break-all">
-                                    {internship.companyWebsite}
-                                </span>
                             </div>
 
                             <div className="mt-5 flex flex-col items-stretch gap-3 min-[520px]:mt-6 min-[520px]:flex-row min-[520px]:items-center min-[520px]:gap-4">

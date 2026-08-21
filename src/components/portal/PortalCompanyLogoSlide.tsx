@@ -49,13 +49,13 @@ export default function PortalCompanyLogoSlide({
     )
 
     const content = showCompanyName ? (
-        <div className="flex flex-col items-center justify-center gap-3">
-            <span className="inline-flex size-[88px] items-center justify-center overflow-hidden rounded-full bg-[#eef2f6] p-3">
+        <div className="flex flex-col items-center justify-center gap-4">
+            <span className="inline-flex h-[92px] w-full max-w-[150px] items-center justify-center">
                 {logoSrc ? (
                     <img
                         src={logoSrc}
                         alt={logoAlt ?? companyName}
-                        className="h-full w-full object-cover"
+                        className="max-h-full max-w-full object-contain drop-shadow-[0_8px_14px_rgb(15_23_42_/_0.18)]"
                     />
                 ) : (
                     <span className="px-2 text-[28px] font-extrabold tracking-[0.08em] text-[#213b63]">
@@ -63,7 +63,7 @@ export default function PortalCompanyLogoSlide({
                     </span>
                 )}
             </span>
-            <span className="text-size20 font-bold text-black">
+            <span className="line-clamp-2 text-size20 font-bold leading-[1.5] text-black">
                 {companyName}
             </span>
         </div>

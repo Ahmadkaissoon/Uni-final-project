@@ -64,10 +64,6 @@ export default function PortalJobDetailsSection({
                                 <span className="break-words">
                                     {job.companyLegalName}
                                 </span>
-                                |
-                                <span className="break-all">
-                                    {job.companyWebsite}
-                                </span>
                             </div>
                         </div>
                     </div>

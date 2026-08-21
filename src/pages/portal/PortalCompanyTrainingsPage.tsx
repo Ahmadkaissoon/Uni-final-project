@@ -16,6 +16,7 @@ import companyImage from "../../assets/common/company_img.png"
 import ReusableTable from "../../components/global/table/ReusableTable"
 import { Button } from "../../components/global/ui/button"
 import PortalCompanyTrainingForm from "../../components/portal/PortalCompanyTrainingForm"
+import PortalDeleteConfirmDialog from "../../components/portal/PortalDeleteConfirmDialog"
 import PortalOpportunityTabs from "../../components/portal/PortalOpportunityTabs"
 import PortalTrainingDetailsSection from "../../components/portal/PortalTrainingDetailsSection"
 import {
@@ -54,6 +55,9 @@ export default function PortalCompanyTrainingsPage({
     const navigate = useNavigate()
     const panelRef = useRef<HTMLDivElement | null>(null)
     const [activePanel, setActivePanel] = useState<ActivePanelState | null>(null)
+    const [pendingDeleteTrainingId, setPendingDeleteTrainingId] = useState<
+        string | null
+    >(null)
 
     const companyTrainingsQuery = usePortalCompanyTrainings()
     const companyProfileQuery = usePortalAuthProfile("company")
@@ -168,7 +172,7 @@ export default function PortalCompanyTrainingsPage({
         },
         {
             id: "city",
-            header: "المدينة",
+            header: "المكان",
             sortable: true,
             cell: (row: CompanyTrainingTableRow) => row.location,
             sortFn: (
@@ -217,9 +221,7 @@ export default function PortalCompanyTrainingsPage({
                     <IconActionButton
                         label="حذف التدريب"
                         colorClassName="text-[#ff6a61] hover:bg-white/12"
-                        onClick={() => {
-                            void handleDeleteTraining(row.id)
-                        }}
+                        onClick={() => setPendingDeleteTrainingId(row.id)}
                     >
                         <Trash2 className="size-[18px]" />
                     </IconActionButton>
@@ -229,14 +231,6 @@ export default function PortalCompanyTrainingsPage({
     ]
 
     async function handleDeleteTraining(trainingId: string) {
-        const shouldDelete = window.confirm(
-            "هل تريد حذف هذا التدريب من القائمة؟",
-        )
-
-        if (!shouldDelete) {
-            return
-        }
-
         await deleteTrainingMutation.mutateAsync(
             `/trainings/${encodeURIComponent(trainingId)}`,
         )
@@ -244,6 +238,7 @@ export default function PortalCompanyTrainingsPage({
         setActivePanel((currentPanel) =>
             currentPanel?.itemId === trainingId ? null : currentPanel,
         )
+        setPendingDeleteTrainingId(null)
     }
 
     async function handleTrainingUpdate(formData: CompanyTrainingFormData) {
@@ -418,6 +413,24 @@ export default function PortalCompanyTrainingsPage({
                     ) : null}
                 </div>
             </div>
+
+            <PortalDeleteConfirmDialog
+                open={Boolean(pendingDeleteTrainingId)}
+                title="حذف التدريب؟"
+                description="سيتم حذف هذا التدريب من القائمة. لا يمكن التراجع عن هذه العملية بعد التأكيد."
+                confirmLabel="حذف التدريب"
+                isDeleting={deleteTrainingMutation.isPending}
+                onOpenChange={(open) => {
+                    if (!open && !deleteTrainingMutation.isPending) {
+                        setPendingDeleteTrainingId(null)
+                    }
+                }}
+                onConfirm={() => {
+                    if (pendingDeleteTrainingId) {
+                        return handleDeleteTraining(pendingDeleteTrainingId)
+                    }
+                }}
+            />
         </section>
     )
 }

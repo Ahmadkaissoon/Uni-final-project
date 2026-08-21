@@ -9,6 +9,7 @@ import {
   usePortalSeekerProfile,
   useUpdatePortalSeekerProfile,
 } from "../../api/portalSeekerProfile";
+import PortalAccountLogoutButton from "../../components/portal/PortalAccountLogoutButton";
 import PortalSeekerProfileSection from "../../components/portal/PortalSeekerProfileSection";
 import { Button } from "../../components/global/ui/button";
 import type { PortalPageDefinition } from "../../router/portalPages";
@@ -57,7 +58,6 @@ function mapSeekerProfileToStoredProfile(
     professionalProfile: [
       formData.linkedin,
       formData.github,
-      formData.behance,
     ]
       .filter(Boolean)
       .join(", "),
@@ -140,27 +140,31 @@ export default function PortalUserProfilePage({
         };
       }}
       topActions={
-        alternatePagePath ? (
-          <Button
-            type="button"
-            variant="panel"
-            size="normal"
-            onClick={() => navigate(alternatePagePath)}
-            className="rounded-[14px] bg-[#5a80cf] !px-5 !py-3 !text-size15 !font-bold !text-white hover:!brightness-105"
-          >
-            {isReadOnlyPage ? (
-              <>
-                <PencilLine className="ms-2 size-4" />
-                تعديل الملف الشخصي
-              </>
-            ) : (
-              <>
-                <UserRound className="ms-2 size-4" />
-                عرض الملف الشخصي
-              </>
-            )}
-          </Button>
-        ) : null
+        <div className="flex flex-wrap items-center gap-3">
+          {alternatePagePath ? (
+            <Button
+              type="button"
+              variant="panel"
+              size="normal"
+              onClick={() => navigate(alternatePagePath)}
+              className="rounded-[14px] bg-[#5a80cf] !px-5 !py-3 !text-size15 !font-bold !text-white hover:!brightness-105"
+            >
+              {isReadOnlyPage ? (
+                <>
+                  <PencilLine className="ms-2 size-4" />
+                  تعديل الملف الشخصي
+                </>
+              ) : (
+                <>
+                  <UserRound className="ms-2 size-4" />
+                  عرض الملف الشخصي
+                </>
+              )}
+            </Button>
+          ) : null}
+
+          <PortalAccountLogoutButton />
+        </div>
       }
     />
   );

@@ -111,7 +111,10 @@ export default function PortalCompaniesCarouselSection({
                                               key={`company-skeleton-${index + 1}`}
                                               className="px-3"
                                           >
-                                              <PortalCompanyLogoSlideSkeleton />
+                                              <PortalCompanyLogoSlideSkeleton
+                                                  showCompanyName
+                                                  className="min-h-[170px] !px-5 !py-5"
+                                              />
                                           </div>
                                       ))
                                     : resolvedCompanies.map((company) => (
@@ -121,6 +124,8 @@ export default function PortalCompaniesCarouselSection({
                                                   logoSrc={company.logoSrc}
                                                   logoAlt={company.logoAlt}
                                                   logoLabel={company.logoLabel}
+                                                  showCompanyName
+                                                  className="min-h-[170px] !px-5 !py-5"
                                                   to={buildPortalCompanyJobsPath(
                                                       getPortalCompanyPrimaryMatchKey(
                                                           company,

@@ -1,77 +1,84 @@
-import { useMemo } from "react"
+import { FileText } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
-import {
-    usePortalCompanyStudies,
-    usePortalCompanyStudy,
-} from "../../api/portalStudies"
+import Loader from "../../components/global/loader/Loader"
 import PortalStudyDetailsSection from "../../components/portal/PortalStudyDetailsSection"
 import PortalStudiesSection from "../../components/portal/PortalStudiesSection"
+import {
+    companyStudyRecords,
+    type PortalStudyRecord,
+} from "../../components/portal/portalStudiesData"
 import type { PortalPageDefinition } from "../../router/portalPages"
 
 interface PortalCompanyStudiesPageProps {
     page: PortalPageDefinition
 }
 
+const mockLoadingDelayMs = 650
+
 const studiesPageDescription =
-    "يمكنك مشاهدة جميع الدراسات والمقالات التي تنشرها شركتك داخل المنصة"
+    "يمكنك مشاهدة مجموعة مقالات ودراسات مختصرة تساعد الشركات على تحسين التوظيف والتدريب وإدارة المواهب."
 
 const studyDetailsDescription =
-    "يمكنك الاطلاع على المقال الكامل ومراجعة كامل المحاور التي نشرتها شركتك ضمن منصة وظيفتي."
+    "اطلع على المقال الكامل مع المحاور الأساسية والمؤشرات التي تساعدك على تطبيق الفكرة داخل شركتك."
 
 export default function PortalCompanyStudiesPage({
     page,
 }: PortalCompanyStudiesPageProps) {
     const [searchParams] = useSearchParams()
     const selectedArticleId = searchParams.get("article")
+    const [isListLoading, setIsListLoading] = useState(true)
+    const [isDetailsLoading, setIsDetailsLoading] = useState(false)
 
-    const studiesQuery = usePortalCompanyStudies()
-    const selectedStudyQuery = usePortalCompanyStudy(
-        selectedArticleId,
-        Boolean(selectedArticleId),
+    const selectedStudy = useMemo(
+        () =>
+            selectedArticleId
+                ? companyStudyRecords.find(
+                      (study) => study.id === selectedArticleId,
+                  ) ?? null
+                : null,
+        [selectedArticleId],
     )
-
-    const selectedStudy = useMemo(() => {
-        if (!selectedArticleId) {
-            return null
-        }
-
-        if (selectedStudyQuery.study?.id === selectedArticleId) {
-            return selectedStudyQuery.study
-        }
-
-        return (
-            studiesQuery.studies.find((study) => study.id === selectedArticleId) ??
-            null
-        )
-    }, [selectedArticleId, selectedStudyQuery.study, studiesQuery.studies])
 
     const relatedStudies = useMemo(
         () =>
-            studiesQuery.studies
+            companyStudyRecords
                 .filter((study) => study.id !== selectedStudy?.id)
                 .slice(0, 2),
-        [selectedStudy?.id, studiesQuery.studies],
+        [selectedStudy?.id],
     )
 
-    if (selectedArticleId) {
-        if (selectedStudyQuery.isLoading && !selectedStudy) {
-            return (
-                <PortalStudiesStateSection
-                    title={page.title}
-                    description={studyDetailsDescription}
-                    message="جاري تحميل تفاصيل الدراسة..."
-                />
-            )
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            setIsListLoading(false)
+        }, mockLoadingDelayMs)
+
+        return () => window.clearTimeout(timer)
+    }, [])
+
+    useEffect(() => {
+        if (!selectedArticleId) {
+            setIsDetailsLoading(false)
+            return
         }
 
-        if (selectedStudyQuery.isError && !selectedStudy) {
+        setIsDetailsLoading(true)
+        const timer = window.setTimeout(() => {
+            setIsDetailsLoading(false)
+        }, mockLoadingDelayMs)
+
+        return () => window.clearTimeout(timer)
+    }, [selectedArticleId])
+
+    if (selectedArticleId) {
+        if (isDetailsLoading) {
             return (
                 <PortalStudiesStateSection
                     title={page.title}
                     description={studyDetailsDescription}
-                    message="تعذر تحميل تفاصيل الدراسة حالياً. حاول مرة أخرى بعد قليل."
-                    tone="error"
+                    message="جاري تحميل المقال..."
+                    showLoader
                 />
             )
         }
@@ -86,35 +93,23 @@ export default function PortalCompanyStudiesPage({
                 />
             )
         }
-    }
 
-    if (studiesQuery.isLoading) {
         return (
             <PortalStudiesStateSection
-                title={page.title}
-                description={studiesPageDescription}
-                message="جاري تحميل الدراسات..."
+                title="المقال غير متاح"
+                description={studyDetailsDescription}
+                message="لم نتمكن من العثور على هذا المقال ضمن البيانات الحالية."
             />
         )
     }
 
-    if (studiesQuery.isError) {
+    if (isListLoading) {
         return (
             <PortalStudiesStateSection
                 title={page.title}
                 description={studiesPageDescription}
-                message="تعذر تحميل الدراسات حالياً. حاول تحديث الصفحة ثم أعد المحاولة."
-                tone="error"
-            />
-        )
-    }
-
-    if (studiesQuery.studies.length === 0) {
-        return (
-            <PortalStudiesStateSection
-                title={page.title}
-                description={studiesPageDescription}
-                message="لا توجد دراسات منشورة لشركتك حتى الآن."
+                message="جاري تحميل المقالات..."
+                showLoader
             />
         )
     }
@@ -123,7 +118,7 @@ export default function PortalCompanyStudiesPage({
         <PortalStudiesSection
             title={page.title}
             description={studiesPageDescription}
-            studies={studiesQuery.studies.map((study) => ({
+            studies={companyStudyRecords.map((study) => ({
                 id: study.id,
                 companyName: study.companyName,
                 studyTitle: study.studyTitle,
@@ -138,12 +133,12 @@ function PortalStudiesStateSection({
     title,
     description,
     message,
-    tone = "neutral",
+    showLoader = false,
 }: {
     title: string
     description: string
     message: string
-    tone?: "neutral" | "error"
+    showLoader?: boolean
 }) {
     return (
         <section className="py-12 sm:py-16 lg:py-20" dir="rtl">
@@ -160,14 +155,15 @@ function PortalStudiesStateSection({
                         </div>
                     </div>
 
-                    <div
-                        className={[
-                            "portal-category-card-shadow rounded-[22px] border px-6 py-10 text-center sm:px-10 sm:py-14",
-                            tone === "error"
-                                ? "border-[#f0c3c0] bg-[#fff7f6] text-[#b7443e]"
-                                : "border-[#dbe5f3] bg-white text-[#5b6779]",
-                        ].join(" ")}
-                    >
+                    <div className="portal-category-card-shadow flex min-h-[260px] flex-col items-center justify-center gap-4 rounded-[22px] border border-[#dbe5f3] bg-white px-6 py-10 text-center text-[#5b6779] sm:px-10 sm:py-14">
+                        {showLoader ? (
+                            <Loader size={8} />
+                        ) : (
+                            <span className="inline-flex size-14 items-center justify-center rounded-full bg-warning-color/10 text-warning-color">
+                                <FileText className="size-7" />
+                            </span>
+                        )}
+
                         <p className="m-0 text-size20 font-semibold leading-[1.9] sm:text-size24">
                             {message}
                         </p>

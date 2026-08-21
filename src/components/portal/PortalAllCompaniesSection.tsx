@@ -1,4 +1,7 @@
 import {
+    Download,
+    Eye,
+    FileText,
     Globe,
     Mail,
     MapPin,
@@ -11,18 +14,24 @@ import { useMemo, useState, type ReactNode } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 
 import {
-    getPortalCompanyMatchKeys,
     getPortalCompanyPrimaryMatchKey,
+    usePortalCompanyDetails,
     usePortalCompanies,
+    usePortalSimilarCompanies,
 } from "../../api/portalCompanies"
-import { usePortalJobs } from "../../api/portalJobs"
-import { usePortalTrainings } from "../../api/portalTrainings"
 import { Button } from "../global/ui/button"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "../global/ui/dialog"
 import PortalCompanyLogoSlide from "./PortalCompanyLogoSlide"
 import PortalCompanyLogoSlideSkeleton from "./PortalCompanyLogoSlideSkeleton"
 import {
     buildPortalCompanyJobsPath,
-    normalizePortalCompanyValue,
     type PortalCompanyDirectoryItem,
 } from "./portalCompaniesData"
 
@@ -194,37 +203,34 @@ export function PortalCompanyDetailsView({
     onBack,
 }: PortalCompanyDetailsViewProps) {
     const navigate = useNavigate()
-    const jobsQuery = usePortalJobs()
-    const trainingsQuery = usePortalTrainings()
-    const companyJobs = useMemo(
-        () =>
-            jobsQuery.jobs.filter((job) =>
-                matchesCompanyIdentity(company, job.companyName, job.companyWebsite),
-            ),
-        [company, jobsQuery.jobs],
-    )
-    const companyTrainings = useMemo(
-        () =>
-            trainingsQuery.trainings.filter((training) =>
-                matchesCompanyIdentity(company, training.companyName),
-            ),
-        [company, trainingsQuery.trainings],
-    )
-    const primaryMatchKey = getPortalCompanyPrimaryMatchKey(company)
-    const opportunitiesAreLoading =
-        jobsQuery.isLoading || trainingsQuery.isLoading
-    const similarCompanies = useMemo(
+    const companyDetailsQuery = usePortalCompanyDetails(company.id)
+    const resolvedCompany = companyDetailsQuery.company ?? company
+    const primaryMatchKey = getPortalCompanyPrimaryMatchKey(resolvedCompany)
+    const similarCompaniesQuery = usePortalSimilarCompanies(resolvedCompany.id)
+    const fallbackSimilarCompanies = useMemo(
         () =>
             companies
-                .filter((currentCompany) => currentCompany.id !== company.id)
+                .filter(
+                    (currentCompany) => currentCompany.id !== resolvedCompany.id,
+                )
                 .sort((firstCompany, secondCompany) => {
-                    const firstScore = getSimilarCompanyScore(company, firstCompany)
-                    const secondScore = getSimilarCompanyScore(company, secondCompany)
+                    const firstScore = getSimilarCompanyScore(
+                        resolvedCompany,
+                        firstCompany,
+                    )
+                    const secondScore = getSimilarCompanyScore(
+                        resolvedCompany,
+                        secondCompany,
+                    )
                     return secondScore - firstScore
                 })
                 .slice(0, 3),
-        [companies, company],
+        [companies, resolvedCompany],
     )
+    const similarCompanies =
+        similarCompaniesQuery.companies.length > 0
+            ? similarCompaniesQuery.companies
+            : fallbackSimilarCompanies
 
     return (
         <section className="pb-12 pt-10 sm:pb-18 sm:pt-12" dir="rtl">
@@ -259,16 +265,20 @@ export function PortalCompanyDetailsView({
 
                     <div className="mb-12 grid items-center gap-8 lg:grid-cols-[minmax(360px,1.35fr)_minmax(280px,0.9fr)] lg:gap-14">
                         <div className="order-1 overflow-hidden rounded-[14px] bg-[#eef2f6]">
-                            {company.logoSrc ? (
+                            {resolvedCompany.logoSrc ? (
                                 <img
-                                    src={company.logoSrc}
-                                    alt={company.logoAlt ?? company.companyName}
+                                    src={resolvedCompany.logoSrc}
+                                    alt={
+                                        resolvedCompany.logoAlt ??
+                                        resolvedCompany.companyName
+                                    }
                                     className="h-[250px] w-full object-cover sm:h-[300px]"
                                 />
                             ) : (
                                 <div className="flex h-[250px] items-center justify-center sm:h-[300px]">
                                     <span className="inline-flex size-28 items-center justify-center rounded-full bg-white text-[32px] font-extrabold text-[#213b63] shadow-[0_12px_30px_rgb(15_23_42_/_0.12)]">
-                                        {company.logoLabel ?? company.companyName.slice(0, 2)}
+                                        {resolvedCompany.logoLabel ??
+                                            resolvedCompany.companyName.slice(0, 2)}
                                     </span>
                                 </div>
                             )}
@@ -276,20 +286,20 @@ export function PortalCompanyDetailsView({
 
                         <div className="order-2 flex flex-col items-center text-center">
                             <h2 className="mb-6 text-size24 font-bold text-warning-color">
-                                {company.companyName}
+                                {resolvedCompany.companyName}
                             </h2>
 
                             <CompanyContactLine
                                 icon={<MapPin className="size-6 text-warning-color" />}
-                                value={formatCompanyLocation(company)}
+                                value={formatCompanyLocation(resolvedCompany)}
                             />
                             <CompanyContactLine
                                 icon={<Globe className="size-6 text-warning-color" />}
-                                value={formatCompanyWebsite(company)}
+                                value={formatCompanyWebsite(resolvedCompany)}
                             />
                             <CompanyContactLine
                                 icon={<Mail className="size-6 text-warning-color" />}
-                                value={formatTextValue(company.companyEmail)}
+                                value={formatTextValue(resolvedCompany.companyEmail)}
                             />
 
                             <div className="mt-5 flex flex-col items-center gap-3 min-[520px]:flex-row">
@@ -306,10 +316,10 @@ export function PortalCompanyDetailsView({
                                     <SendHorizontal className="size-5" />
                                 </Button>
 
-                                {company.companyPhone ? (
+                                {resolvedCompany.companyPhone ? (
                                     <div className="inline-flex items-center gap-2 text-sm font-medium text-black min-[520px]:text-size16">
                                         <Phone className="size-5 shrink-0 text-warning-color" />
-                                        <span>{company.companyPhone}</span>
+                                        <span>{resolvedCompany.companyPhone}</span>
                                     </div>
                                 ) : null}
                             </div>
@@ -320,13 +330,18 @@ export function PortalCompanyDetailsView({
                         <CompanyInfoColumn
                             title="المعلومات العامة"
                             items={[
-                                ["العنوان", formatCompanyAddress(company)],
-                                ["القطاع", formatCompanySector(company.sector)],
+                                ["العنوان", formatCompanyAddress(resolvedCompany)],
+                                ["القطاع", formatCompanySector(resolvedCompany.sector)],
                                 [
                                     "عدد الموظفين",
-                                    formatCompanyEmployees(company.numberOfEmployees),
+                                    formatCompanyEmployees(
+                                        resolvedCompany.numberOfEmployees,
+                                    ),
                                 ],
-                                ["هاتف الشركة", formatTextValue(company.companyPhone)],
+                                [
+                                    "هاتف الشركة",
+                                    formatTextValue(resolvedCompany.companyPhone),
+                                ],
                             ]}
                         />
 
@@ -335,15 +350,15 @@ export function PortalCompanyDetailsView({
                             items={[
                                 [
                                     "اسم مسؤول الموارد البشرية",
-                                    formatTextValue(company.hrManagerName),
+                                    formatTextValue(resolvedCompany.hrManagerName),
                                 ],
                                 [
                                     "البريد الإلكتروني",
-                                    formatTextValue(company.companyEmail),
+                                    formatTextValue(resolvedCompany.companyEmail),
                                 ],
                                 [
                                     "الموقع الإلكتروني",
-                                    formatCompanyWebsite(company),
+                                    formatCompanyWebsite(resolvedCompany),
                                 ],
                             ]}
                         />
@@ -353,29 +368,29 @@ export function PortalCompanyDetailsView({
                             items={[
                                 [
                                     "أنواع الفرص المطلوبة",
-                                    formatCompanyJobTypes(company.jobTypes),
-                                ],
-                                [
-                                    "عدد الفرص الحالية",
-                                    opportunitiesAreLoading
-                                        ? "جاري تحميل الفرص..."
-                                        : `${companyJobs.length} وظيفة | ${companyTrainings.length} تدريب`,
+                                    formatCompanyJobTypes(resolvedCompany.jobTypes),
                                 ],
                                 [
                                     "الفرص المخطط نشرها شهرياً",
-                                    formatMonthlyPosts(company.monthlyJobPostsPlanned),
+                                    formatMonthlyPosts(
+                                        resolvedCompany.monthlyJobPostsPlanned,
+                                    ),
                                 ],
                                 [
                                     "توصيات الشركة",
                                     formatCompanyRecommendations(
-                                        company.companyRecommendations,
-                                        companyJobs,
-                                        companyTrainings,
+                                        resolvedCompany.companyRecommendations,
                                     ),
                                 ],
                             ]}
                         />
                     </div>
+
+                    <CompanyLicenseSection
+                        licenseUrl={resolvedCompany.licenseUrl}
+                        licenseFilename={resolvedCompany.licenseFilename}
+                        companyName={resolvedCompany.companyName}
+                    />
 
                     <div className="mb-10 flex justify-start">
                         <div className="border-r-[3px] border-warning-color pr-2 text-right">
@@ -449,17 +464,106 @@ function CompanyContactLine({
     )
 }
 
-function matchesCompanyIdentity(
-    company: PortalCompanyDirectoryItem,
-    companyName?: string,
-    companyWebsite?: string,
-) {
-    const companyMatchKeys = getPortalCompanyMatchKeys(company)
-    const comparedValues = [companyName, companyWebsite]
-        .map((value) => normalizePortalCompanyValue(value))
-        .filter(Boolean)
+function CompanyLicenseSection({
+    licenseUrl,
+    licenseFilename,
+    companyName,
+}: {
+    licenseUrl?: string
+    licenseFilename?: string
+    companyName: string
+}) {
+    if (!licenseUrl) {
+        return null
+    }
 
-    return comparedValues.some((value) => companyMatchKeys.includes(value))
+    const canPreviewAsImage = isImageFile(licenseFilename ?? licenseUrl)
+
+    return (
+        <section className="mb-12 text-right" dir="rtl">
+            <div className="mb-6 border-r-[3px] border-warning-color pr-2">
+                <h2 className="m-0 text-[26px] font-bold leading-[1.35] text-black sm:text-[32px]">
+                    شهادة الترخيص
+                </h2>
+            </div>
+
+            <div className="flex flex-col gap-5 rounded-[14px] bg-[#f8fafc] px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <div className="flex items-center gap-4">
+                    {canPreviewAsImage ? (
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <button
+                                    type="button"
+                                    className="group relative size-24 shrink-0 overflow-hidden rounded-[10px] bg-white shadow-[0_10px_26px_rgb(15_23_42_/_0.10)]"
+                                    aria-label={`عرض شهادة ترخيص ${companyName}`}
+                                >
+                                    <img
+                                        src={licenseUrl}
+                                        alt={`شهادة ترخيص ${companyName}`}
+                                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                    />
+                                    <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition duration-300 group-hover:bg-black/35 group-hover:opacity-100">
+                                        <Eye className="size-6" />
+                                    </span>
+                                </button>
+                            </DialogTrigger>
+                            <DialogContent className="w-[min(900px,94vw)] max-w-[94vw] bg-white p-4 sm:p-5">
+                                <DialogHeader className="text-right">
+                                    <DialogTitle className="text-size20 font-bold text-black">
+                                        شهادة ترخيص {companyName}
+                                    </DialogTitle>
+                                    <DialogDescription>
+                                        معاينة الشهادة المرفوعة عند تسجيل الشركة.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="max-h-[70vh] overflow-auto rounded-[10px] bg-[#f8fafc] p-3">
+                                    <img
+                                        src={licenseUrl}
+                                        alt={`شهادة ترخيص ${companyName}`}
+                                        className="mx-auto max-h-[64vh] max-w-full rounded-[8px] object-contain"
+                                    />
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+                    ) : (
+                        <span className="inline-flex size-16 shrink-0 items-center justify-center rounded-[10px] bg-white text-warning-color shadow-[0_10px_26px_rgb(15_23_42_/_0.08)]">
+                            <FileText className="size-8" />
+                        </span>
+                    )}
+
+                    <div>
+                        <p className="m-0 text-size18 font-bold text-black">
+                            {licenseFilename || "ملف الترخيص الرسمي"}
+                        </p>
+                        <p className="mt-1 mb-0 text-size15 leading-7 text-black/70">
+                            يمكنك معاينة الشهادة أو فتح الملف المرفوع من قبل الشركة.
+                        </p>
+                    </div>
+                </div>
+
+                <Button
+                    asChild
+                    variant="panel"
+                    size="normal"
+                    className="inline-flex items-center gap-2 rounded-[8px] border border-warning-color bg-warning-color !px-4 !py-2.5 !text-size16 !font-bold !text-white hover:!brightness-105"
+                >
+                    <a
+                        href={licenseUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        download
+                    >
+                        تحميل الشهادة
+                        <Download className="size-5" />
+                    </a>
+                </Button>
+            </div>
+        </section>
+    )
+}
+
+function isImageFile(value: string) {
+    return /\.(png|jpe?g|webp|gif|bmp|svg)(?:[?#].*)?$/i.test(value)
 }
 
 function getSimilarCompanyScore(
@@ -602,25 +706,12 @@ function formatMonthlyPosts(monthlyJobPostsPlanned?: number) {
         : "غير محدد"
 }
 
-function formatCompanyRecommendations(
-    recommendations?: string,
-    companyJobs: { jobTitle: string }[] = [],
-    companyTrainings: { trainingType: string }[] = [],
-) {
+function formatCompanyRecommendations(recommendations?: string) {
     const normalizedRecommendations = `${recommendations ?? ""}`.trim()
 
     if (normalizedRecommendations) {
         return normalizedRecommendations
     }
 
-    const opportunityTitles = Array.from(
-        new Set([
-            ...companyJobs.map((job) => job.jobTitle),
-            ...companyTrainings.map((training) => training.trainingType),
-        ]),
-    )
-
-    return opportunityTitles.length > 0
-        ? opportunityTitles.join(" | ")
-        : "غير محدد"
+    return "غير محدد"
 }

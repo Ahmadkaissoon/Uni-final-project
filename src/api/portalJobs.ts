@@ -151,14 +151,16 @@ function formatSalary(value: unknown) {
 
 function formatJobLevel(value?: string) {
     switch (`${value ?? ""}`.trim().toLowerCase()) {
-        case "junior":
+        case "entry":
             return "مبتدئ"
+        case "junior":
+            return "جونيور"
         case "mid":
         case "mid-level":
         case "middle":
             return "متوسط"
         case "senior":
-            return "كبير"
+            return "سينيور"
         case "lead":
             return "قائد فريق"
         case "manager":

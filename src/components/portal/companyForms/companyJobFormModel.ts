@@ -84,6 +84,17 @@ function getDetailValue(
     )
 }
 
+function getNumericDetailValue(
+    detailColumns: PortalJobDetailEntry[][],
+    detailId: string,
+    fallback = "",
+) {
+    const value = getDetailValue(detailColumns, detailId, fallback)
+    const match = value.match(/-?\d+(\.\d+)?/)
+
+    return match?.[0] ?? fallback
+}
+
 export function buildCompanyJobDetailColumns(
     formData: CompanyJobFormData,
 ): PortalJobDetailEntry[][] {
@@ -243,8 +254,8 @@ export function jobRecordToCompanyJobFormData(
         ),
         seniority: getDetailValue(record.detailColumns, "seniority"),
         cvLanguage: getDetailValue(record.detailColumns, "cv-language"),
-        minSalary: getDetailValue(record.detailColumns, "min-salary"),
-        maxSalary: getDetailValue(record.detailColumns, "max-salary"),
+        minSalary: getNumericDetailValue(record.detailColumns, "min-salary"),
+        maxSalary: getNumericDetailValue(record.detailColumns, "max-salary"),
         jobSummary: getDetailValue(record.detailColumns, "job-summary"),
         responsibilities: getDetailValue(record.detailColumns, "responsibilities"),
         qualifications: getDetailValue(record.detailColumns, "qualifications"),

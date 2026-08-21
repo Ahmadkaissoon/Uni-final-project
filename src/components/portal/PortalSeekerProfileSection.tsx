@@ -110,7 +110,6 @@ function cloneFormData(
             personalWebsite: "",
             linkedin: "",
             github: "",
-            behance: "",
             languages: [createEmptyLanguage()],
         }
     }
@@ -1064,23 +1063,6 @@ export default function PortalSeekerProfileSection({
                             />
                         </FieldWrapper>
 
-                        <FieldWrapper
-                            label="Behance"
-                            className="md:col-span-2 xl:col-span-1"
-                        >
-                            <input
-                                type="url"
-                                value={formData.behance}
-                                disabled={isReadOnly}
-                                onChange={(event) =>
-                                    updateField("behance", event.target.value)
-                                }
-                                className={cn(
-                                    fieldInputClassName,
-                                    isReadOnly && fieldReadonlyClassName,
-                                )}
-                            />
-                        </FieldWrapper>
                     </ProfileSection>
                 </div>
             </div>
