@@ -37,14 +37,14 @@ interface PortalLayoutProps {
 
 const defaultProfileByRole: Record<PortalRole, PortalProfile> = {
     user: {
-        name: "أحمد الرسول",
-        tagline: "باحث عن فرصة مناسبة",
-        avatarLabel: "أر",
+        name: "المستخدم",
+        tagline: "جاري تحميل الملف الشخصي",
+        avatarLabel: "م",
     },
     company: {
-        name: "Google",
-        tagline: "لوحة إدارة الشركة",
-        avatarLabel: "GO",
+        name: "الشركة",
+        tagline: "جاري تحميل الملف الشخصي",
+        avatarLabel: "ش",
     },
 }
 
@@ -345,7 +345,7 @@ export function PortalLayout({
                                 onNotificationClick={handleNotificationClick}
                                 onDeleteNotification={handleDeleteNotification}
                                 buttonClassName="size-[38px] rounded-[10px] border-none bg-transparent text-inverse-fg hover:bg-white/15"
-                                panelClassName="left-0 lg:left-0"
+                                panelClassName="md:left-auto md:right-0 lg:left-0 lg:right-auto"
                             />
 
                             <span

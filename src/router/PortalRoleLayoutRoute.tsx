@@ -10,7 +10,7 @@ import {
 } from "../components/layout/PortalLayout"
 import { defaultActivePageByRole } from "../components/layout/portalLayout.config"
 import {
-    getStoredPortalProfileSummary,
+    getStoredPortalProfileSummaryIfAvailable,
     subscribeToPortalProfileUpdates,
 } from "../utils/portalProfileStorage"
 import { getPortalPageByPath, getPortalPathByPageId } from "./portalPages"
@@ -20,22 +20,22 @@ interface PortalRoleLayoutRouteProps {
 }
 
 function mergePortalProfiles(
-    storedProfile: PortalProfile,
+    storedProfile: PortalProfile | null,
     apiProfile: PortalProfile | null,
 ) {
     if (!apiProfile) {
         return storedProfile
     }
 
-    const resolvedName = apiProfile.name.trim() || storedProfile.name
-    const resolvedAvatarSrc = apiProfile.avatarSrc ?? storedProfile.avatarSrc
+    const resolvedName = apiProfile.name.trim() || storedProfile?.name || ""
+    const resolvedAvatarSrc = apiProfile.avatarSrc ?? storedProfile?.avatarSrc
 
     return {
         name: resolvedName,
-        tagline: storedProfile.tagline ?? apiProfile.tagline,
+        tagline: storedProfile?.tagline ?? apiProfile.tagline,
         avatarSrc: resolvedAvatarSrc,
         avatarLabel:
-            storedProfile.avatarLabel ??
+            storedProfile?.avatarLabel ??
             apiProfile.avatarLabel ??
             resolvedName
                 .trim()
@@ -53,7 +53,7 @@ export default function PortalRoleLayoutRoute({
     const navigate = useNavigate()
     const hasSession = hasAuthSession()
     const [storedProfile, setStoredProfile] = useState(() =>
-        getStoredPortalProfileSummary(role),
+        getStoredPortalProfileSummaryIfAvailable(role),
     )
     const authProfileQuery = usePortalAuthProfile(role, hasSession)
     const resolvedPage = getPortalPageByPath(role, location.pathname)
@@ -71,7 +71,7 @@ export default function PortalRoleLayoutRoute({
     useEffect(() => {
         return subscribeToPortalProfileUpdates((updatedRole) => {
             if (updatedRole === role) {
-                setStoredProfile(getStoredPortalProfileSummary(role))
+                setStoredProfile(getStoredPortalProfileSummaryIfAvailable(role))
             }
         })
     }, [role])
