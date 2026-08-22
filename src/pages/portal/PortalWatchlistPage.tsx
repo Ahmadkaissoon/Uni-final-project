@@ -3,13 +3,13 @@ import { useMemo } from "react"
 import { useSearchParams } from "react-router-dom"
 
 import {
+    usePortalSeekerJobApplicationDetails,
     usePortalSeekerJobApplications,
+    usePortalSeekerTrainingApplicationDetails,
     usePortalSeekerTrainingApplications,
 } from "../../api/portalApplications"
-import { usePortalJob } from "../../api/portalJobs"
 import {
     usePortalSimilarTrainings,
-    usePortalTraining,
     usePortalTrainings,
 } from "../../api/portalTrainings"
 import Loader from "../../components/global/loader/Loader"
@@ -121,7 +121,10 @@ export default function PortalWatchlistPage({
                 : null,
         [selectedJobId],
     )
-    const jobQuery = usePortalJob(selectedJobId, selectedJobFallback)
+    const jobQuery = usePortalSeekerJobApplicationDetails(
+        selectedJobId,
+        selectedJobFallback,
+    )
     const selectedJob = jobQuery.job
     const trainingFallbacks = useMemo(
         () => [...trainingsQuery.trainings, ...portalInternshipRecords],
@@ -140,7 +143,7 @@ export default function PortalWatchlistPage({
                 : null,
         [selectedTrainingId, trainingsQuery.trainings],
     )
-    const trainingQuery = usePortalTraining(
+    const trainingQuery = usePortalSeekerTrainingApplicationDetails(
         selectedTrainingId,
         selectedTrainingFallback,
     )

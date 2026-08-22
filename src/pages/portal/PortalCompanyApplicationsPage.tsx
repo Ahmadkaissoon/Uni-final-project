@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
+import axiosClient from "../../api/axiosClient"
 import {
     type PortalApplicationAcceptancePayload,
     type PortalCompanyApplicationSummaryItem,
@@ -313,7 +314,7 @@ export default function PortalCompanyApplicationsPage({
         )
     }
 
-    function handleOpenCvPreview(row: PortalCompanyApplicationSummaryItem) {
+    async function handleOpenCvPreview(row: PortalCompanyApplicationSummaryItem) {
         const resolvedCvUrl =
             row.cvUrl ??
             (row.id === selectedApplicationDetail?.id
@@ -325,7 +326,19 @@ export default function PortalCompanyApplicationsPage({
             return
         }
 
-        window.open(resolvedCvUrl, "_blank", "noopener,noreferrer")
+        try {
+            const response = await axiosClient.get<Blob>(resolvedCvUrl, {
+                responseType: "blob",
+            })
+            const fileUrl = window.URL.createObjectURL(response.data)
+
+            window.open(fileUrl, "_blank", "noopener,noreferrer")
+            window.setTimeout(() => {
+                window.URL.revokeObjectURL(fileUrl)
+            }, 60_000)
+        } catch {
+            toast.error("تعذر فتح السيرة الذاتية حالياً.")
+        }
     }
 
     async function handleRejectCurrentApplication() {

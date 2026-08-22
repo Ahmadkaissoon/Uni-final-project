@@ -15,7 +15,7 @@ import {
 interface PortalJobApplicationModalProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    jobId: string
+    jobId?: string
 }
 
 export default function PortalJobApplicationModal({
@@ -26,7 +26,7 @@ export default function PortalJobApplicationModal({
     const inputRef = useRef<HTMLInputElement | null>(null)
     const [selectedFileName, setSelectedFileName] = useState("")
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
-    const applyToJobMutation = useApplyToPortalJob(jobId)
+    const applyToJobMutation = useApplyToPortalJob(jobId ?? null)
 
     function handlePickFile() {
         inputRef.current?.click()
@@ -56,7 +56,7 @@ export default function PortalJobApplicationModal({
     }
 
     function handleSubmit() {
-        if (!selectedFile || applyToJobMutation.isPending) {
+        if (!selectedFile || !jobId || applyToJobMutation.isPending) {
             return
         }
 
@@ -133,7 +133,11 @@ export default function PortalJobApplicationModal({
                             variant="panel"
                             size="normal"
                             loading={applyToJobMutation.isPending}
-                            disabled={!selectedFile || applyToJobMutation.isPending}
+                            disabled={
+                                !selectedFile ||
+                                !jobId ||
+                                applyToJobMutation.isPending
+                            }
                             onClick={handleSubmit}
                             className="inline-flex min-h-[50px] items-center justify-center rounded-[10px] border border-[#4da76f] bg-[#5ab37b] !px-8 !py-3 !text-size16 !font-bold !text-white hover:!brightness-105 disabled:!cursor-not-allowed disabled:!opacity-60"
                         >

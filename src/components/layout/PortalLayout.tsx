@@ -145,9 +145,9 @@ export function PortalLayout({
     const [openDropdownId, setOpenDropdownId] = useState<string | null>(
         activeParentItem?.children ? activeParentItem.id : null,
     )
-    const headerRef = useRef<HTMLElement | null>(null)
+    const navRef = useRef<HTMLElement | null>(null)
     const notificationsCenter = useNotificationsCenter(true)
-    const activeDropdownId = openDropdownId ?? activeParentItem?.id ?? null
+    const activeDropdownId = openDropdownId
 
     useEffect(() => {
         if (!openDropdownId) {
@@ -157,7 +157,7 @@ export function PortalLayout({
         function handlePointerDown(event: PointerEvent) {
             if (
                 event.target instanceof Node &&
-                headerRef.current?.contains(event.target)
+                navRef.current?.contains(event.target)
             ) {
                 return
             }
@@ -187,9 +187,9 @@ export function PortalLayout({
         onPageChange?.(item.id)
     }
 
-    const handleChildClick = (parentId: string, childId: string) => {
+    const handleChildClick = (_parentId: string, childId: string) => {
         closeMobileMenu()
-        setOpenDropdownId(parentId)
+        setOpenDropdownId(null)
         onPageChange?.(childId)
     }
 
@@ -223,10 +223,7 @@ export function PortalLayout({
             dir="rtl"
         >
             <div className="flex min-h-svh flex-col">
-                <header
-                    ref={headerRef}
-                    className="sticky top-0 z-30 bg-[linear-gradient(90deg,#5679cf_0%,#426cc6_46%,var(--primary)_78%,var(--primary)_100%)] shadow-navbar-shadow"
-                >
+                <header className="sticky top-0 z-30 bg-[linear-gradient(90deg,#5679cf_0%,#426cc6_46%,var(--primary)_78%,var(--primary)_100%)] shadow-navbar-shadow">
                     <div
                         className={cn(
                             shellWidthClass,
@@ -267,6 +264,7 @@ export function PortalLayout({
                         </button>
 
                         <nav
+                            ref={navRef}
                             className={cn(
                                 "flex-1 items-center justify-center gap-2 max-[1100px]:order-4 max-[1100px]:w-full max-[1100px]:justify-stretch",
                                 mobileMenuOpen

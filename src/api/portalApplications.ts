@@ -1,4 +1,11 @@
 import type { PersonProfileData } from "../utils/portalProfileSchemas"
+import type { PortalJobRecord } from "../components/portal/portalJobsData"
+import type {
+    PortalInternshipListingItem,
+    PortalInternshipRecord,
+} from "../components/portal/portalInternshipsData"
+import { mapApiJobToPortalJobRecord } from "./portalJobs"
+import { mapApiTrainingToPortalInternshipRecord } from "./portalTrainings"
 import { queryClient } from "./queryClient"
 import { useGetData, usePostData, useUpdateData } from "./useQueries"
 
@@ -48,6 +55,57 @@ interface ApiApplicationListResponse<TItem> {
 interface ApiSeekerApplicationCompany {
     _id?: string
     name?: string | null
+    logoUrl?: string | null
+    website?: string | null
+}
+
+interface ApiSeekerJobApplicationDetail {
+    _id: string
+    category?: string
+    categoryName?: string
+    title?: string
+    specialization?: string
+    jobLevel?: string
+    requiredEducation?: string
+    jobType?: string
+    workType?: string
+    workDays?: string
+    workHours?: string
+    experienceYears?: number
+    location?: string
+    minSalary?: number
+    maxSalary?: number
+    resumeLanguage?: string
+    languagelevel?: string
+    description?: string
+    responsibilities?: string
+    skills?: string
+    requirements?: string
+    applicationsCount?: number
+    company?: ApiSeekerApplicationCompany | null
+    companyId?: string
+}
+
+interface ApiSeekerTrainingApplicationDetail {
+    _id: string
+    title?: string
+    trainerLevel?: string
+    category?: string
+    categoryName?: string
+    fieldOfTraining?: string
+    trainingbonus?: string
+    trainingLocation?: string
+    trainingdays?: string
+    trainingDuration?: string
+    trainingDescription?: string
+    goalsAndResponsibilities?: string
+    requirements?: string
+    skills?: string
+    applicationsCount?: number
+    createdAt?: string
+    updatedAt?: string
+    company?: ApiSeekerApplicationCompany | null
+    companyId?: string
 }
 
 interface ApiSeekerJobApplicationItem {
@@ -393,10 +451,13 @@ function mapJobApplicationDetail(
 function mapTrainingApplicationDetail(
     application: ApiTrainingApplicationDetailResponse,
 ): PortalCompanyApplicationDetailRecord {
+    const applicantProfile =
+        application.applicantProfile ?? (application as ApiApplicantProfile)
+
     return {
-        id: formatValue(application.id),
+        id: formatValue(application.id ?? applicantProfile._id),
         applicantName: formatValue(
-            application.applicantProfile?.fullName,
+            applicantProfile.fullName,
             "متقدم جديد",
         ),
         submittedAt: formatDisplayDate(application.date),
@@ -405,12 +466,8 @@ function mapTrainingApplicationDetail(
         cvFileId: formatValue(application.cvFileId),
         cvFilename: formatValue(application.cvFilename),
         cvUrl: getApiAssetUrl(application.cvUrl),
-        avatarSrc: getApiAssetUrl(
-            application.applicantProfile?.profilePictureUrl,
-        ),
-        profileData: mapApplicantProfileToPersonProfileData(
-            application.applicantProfile,
-        ),
+        avatarSrc: getApiAssetUrl(applicantProfile.profilePictureUrl),
+        profileData: mapApplicantProfileToPersonProfileData(applicantProfile),
     }
 }
 
@@ -440,7 +497,6 @@ function mapSeekerJobApplication(
     application: ApiSeekerJobApplicationItem,
 ): PortalSeekerApplicationMonitorItem {
     const applicationId = formatValue(application.id ?? application._id)
-    const jobId = formatValue(application.jobId, applicationId)
 
     return {
         id: applicationId,
@@ -450,7 +506,7 @@ function mapSeekerJobApplication(
         location: formatValue(application.location, "غير محدد"),
         statusLabel: formatValue(application.status, "قيد المراجعة"),
         statusKey: resolveApplicationStatusKey(application.status),
-        to: `/jobs/watchlist?job=${encodeURIComponent(jobId)}`,
+        to: `/jobs/watchlist?job=${encodeURIComponent(applicationId)}`,
     }
 }
 
@@ -458,10 +514,6 @@ function mapSeekerTrainingApplication(
     application: ApiSeekerTrainingApplicationItem,
 ): PortalSeekerApplicationMonitorItem {
     const applicationId = formatValue(application.id ?? application._id)
-    const trainingId = formatValue(
-        application.trainingId ?? application.internshipId,
-        applicationId,
-    )
 
     return {
         id: applicationId,
@@ -480,8 +532,14 @@ function mapSeekerTrainingApplication(
         ),
         statusLabel: formatValue(application.status, "قيد المراجعة"),
         statusKey: resolveApplicationStatusKey(application.status),
-        to: `/jobs/watchlist?training=${encodeURIComponent(trainingId)}`,
+        to: `/jobs/watchlist?training=${encodeURIComponent(applicationId)}`,
     }
+}
+
+function isPortalInternshipRecord(
+    value?: PortalInternshipListingItem | PortalInternshipRecord | null,
+): value is PortalInternshipRecord {
+    return Boolean(value && "overview" in value && "companyWebsite" in value)
 }
 
 export function usePortalCompanyJobApplications(enabled = true) {
@@ -504,7 +562,7 @@ export function usePortalCompanyJobApplications(enabled = true) {
 export function usePortalSeekerJobApplications(enabled = true) {
     const query = useGetData<
         ApiApplicationListResponse<ApiSeekerJobApplicationItem>
-    >("/applications/seeker/jobs", {}, {
+    >("/applications", {}, {
         enabled,
         queryKey: ["portal-seeker-job-applications"],
     })
@@ -519,7 +577,7 @@ export function usePortalSeekerJobApplications(enabled = true) {
 export function usePortalSeekerTrainingApplications(enabled = true) {
     const query = useGetData<
         ApiApplicationListResponse<ApiSeekerTrainingApplicationItem>
-    >("/applications/seeker/trainings", {}, {
+    >("/applications/trainings", {}, {
         enabled,
         queryKey: ["portal-seeker-training-applications"],
     })
@@ -528,6 +586,55 @@ export function usePortalSeekerTrainingApplications(enabled = true) {
         ...query,
         applications: (query.data?.data ?? []).map(mapSeekerTrainingApplication),
         total: query.data?.total ?? 0,
+    }
+}
+
+export function usePortalSeekerJobApplicationDetails(
+    applicationId: string | null,
+    fallback?: PortalJobRecord | null,
+) {
+    const query = useGetData<ApiSeekerJobApplicationDetail>(
+        applicationId ? `/applications/${encodeURIComponent(applicationId)}` : null,
+        {},
+        {
+            enabled: Boolean(applicationId),
+            queryKey: ["portal-seeker-job-application-details", applicationId],
+        },
+    )
+
+    return {
+        ...query,
+        job: query.data
+            ? mapApiJobToPortalJobRecord(query.data, fallback)
+            : fallback ?? null,
+    }
+}
+
+export function usePortalSeekerTrainingApplicationDetails(
+    applicationId: string | null,
+    fallback?: PortalInternshipListingItem | PortalInternshipRecord | null,
+) {
+    const query = useGetData<ApiSeekerTrainingApplicationDetail>(
+        applicationId
+            ? `/applications/trainings/${encodeURIComponent(applicationId)}`
+            : null,
+        {},
+        {
+            enabled: Boolean(applicationId),
+            queryKey: [
+                "portal-seeker-training-application-details",
+                applicationId,
+            ],
+        },
+    )
+
+    return {
+        ...query,
+        training: query.data
+            ? mapApiTrainingToPortalInternshipRecord(query.data, fallback)
+            : isPortalInternshipRecord(fallback)
+              ? fallback
+              : null,
     }
 }
 
