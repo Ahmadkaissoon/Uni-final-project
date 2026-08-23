@@ -347,7 +347,7 @@ export const companyPortalPages: PortalPageDefinition[] = [
     id: "company-guidance",
     path: "/company/guidance",
     role: "company",
-    title: "إرشاد وظيفي",
+    title: "الإرشاد الوظيفي",
     eyebrow: "محتوى الشركة",
     description:
       "صفحة الإرشاد الوظيفي من جهة الشركة، مناسبة لنشر النصائح أو المعلومات الموجهة للمتقدمين.",

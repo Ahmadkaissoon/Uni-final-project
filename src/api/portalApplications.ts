@@ -310,7 +310,7 @@ function resolveMatchRate(value: unknown) {
         return null
     }
 
-    const parsedValue = Number(normalizedValue)
+    const parsedValue = Number(normalizedValue.replace("%", ""))
     return Number.isFinite(parsedValue) ? parsedValue : null
 }
 

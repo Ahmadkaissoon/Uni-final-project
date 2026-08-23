@@ -101,7 +101,7 @@ export const portalLayoutConfig: Record<PortalRole, PortalRoleConfig> = {
             { id: "company-jobs", label: "وظائفي" },
             { id: "company-applications", label: "الطلبات" },
             { id: "company-studies", label: "دراسات" },
-            { id: "company-guidance", label: "إرشاد وظيفي" },
+            { id: "company-guidance", label: "الإرشاد الوظيفي" },
         ],
         footerSections: [
             {

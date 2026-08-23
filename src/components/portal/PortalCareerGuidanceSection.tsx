@@ -9,6 +9,14 @@ import {
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
+import {
+    useAskCareerGuidance,
+    useCareerGuidanceProfileAdvice,
+    useCareerGuidanceConversationDetails,
+    useCareerGuidanceConversations,
+    useCreateCareerGuidanceConversation,
+    useDeleteCareerGuidanceConversation,
+} from "../../api/careerGuidance"
 import blueLogo from "../../assets/icons/blue_logo.png"
 import type { PortalRole } from "../layout/PortalLayout"
 import { Button } from "../global/ui/button"
@@ -25,6 +33,7 @@ interface GuidanceThread {
     id: string
     title: string
     messages: GuidanceMessage[]
+    messageCount?: number
 }
 
 interface PortalCareerGuidanceSectionProps {
@@ -69,11 +78,13 @@ function createGuidanceThread(
     title: string,
     messages: GuidanceMessage[] = [],
     id?: string,
+    messageCount?: number,
 ): GuidanceThread {
     return {
         id: id ?? `${title}-${Math.random().toString(36).slice(2, 10)}`,
         title,
         messages,
+        messageCount,
     }
 }
 
@@ -165,13 +176,92 @@ export default function PortalCareerGuidanceSection({
     const [draft, setDraft] = useState("")
     const [isReplying, setIsReplying] = useState(false)
     const replyTimeoutRef = useRef<number | null>(null)
+    const shouldUseBackendConversations = true
+    const conversationsQuery = useCareerGuidanceConversations(
+        shouldUseBackendConversations,
+    )
+    const selectedConversationQuery = useCareerGuidanceConversationDetails(
+        selectedThreadId,
+        shouldUseBackendConversations,
+    )
+    const askCareerGuidanceMutation = useAskCareerGuidance()
+    const createConversationMutation = useCreateCareerGuidanceConversation()
+    const deleteConversationMutation = useDeleteCareerGuidanceConversation()
+    const profileAdviceMutation = useCareerGuidanceProfileAdvice()
 
     useEffect(() => {
+        if (shouldUseBackendConversations) {
+            return
+        }
+
         window.localStorage.setItem(
             getGuidanceStorageKey(role),
             JSON.stringify(threads),
         )
-    }, [role, threads])
+    }, [role, shouldUseBackendConversations, threads])
+
+    useEffect(() => {
+        if (!shouldUseBackendConversations || conversationsQuery.isLoading) {
+            return
+        }
+
+        const nextThreads = conversationsQuery.conversations.map(
+            (conversation) =>
+                createGuidanceThread(
+                    conversation.title,
+                    [],
+                    conversation.id,
+                    conversation.messageCount,
+                ),
+        )
+
+        setThreads(nextThreads)
+        setSelectedThreadId((currentSelectedThreadId) => {
+            if (
+                currentSelectedThreadId &&
+                nextThreads.some((thread) => thread.id === currentSelectedThreadId)
+            ) {
+                return currentSelectedThreadId
+            }
+
+            return nextThreads[0]?.id ?? null
+        })
+    }, [
+        conversationsQuery.conversations,
+        conversationsQuery.isLoading,
+        shouldUseBackendConversations,
+    ])
+
+    useEffect(() => {
+        if (
+            !shouldUseBackendConversations ||
+            !selectedConversationQuery.conversation
+        ) {
+            return
+        }
+
+        const conversation = selectedConversationQuery.conversation
+
+        setThreads((currentThreads) =>
+            currentThreads.map((thread) =>
+                thread.id === conversation.id
+                    ? {
+                          ...thread,
+                          title: conversation.title,
+                          messages: conversation.messages.map((message) => ({
+                              id: message.id,
+                              role: message.role,
+                              text: message.text,
+                          })),
+                          messageCount: conversation.messages.length,
+                      }
+                    : thread,
+            ),
+        )
+    }, [
+        selectedConversationQuery.conversation,
+        shouldUseBackendConversations,
+    ])
 
     useEffect(() => {
         return () => {
@@ -183,9 +273,37 @@ export default function PortalCareerGuidanceSection({
 
     const selectedThread =
         threads.find((thread) => thread.id === selectedThreadId) ?? null
+    const isSelectedConversationLoading =
+        shouldUseBackendConversations &&
+        Boolean(selectedThreadId) &&
+        selectedConversationQuery.isLoading
     const quickPrompts = quickPromptsByRole[role]
 
-    function handleCreateThread() {
+    async function handleCreateThread() {
+        if (createConversationMutation.isPending) {
+            return
+        }
+
+        if (shouldUseBackendConversations) {
+            try {
+                const conversation =
+                    await createConversationMutation.createConversationAsync()
+                const newThread = createGuidanceThread(
+                    conversation.title,
+                    [],
+                    conversation.id,
+                    conversation.messageCount,
+                )
+
+                setThreads((currentThreads) => [newThread, ...currentThreads])
+                setSelectedThreadId(newThread.id)
+                setDraft("")
+            } catch {
+                return
+            }
+
+            return
+        }
         const newThread = createGuidanceThread("محادثة جديدة")
 
         setThreads((currentThreads) => [newThread, ...currentThreads])
@@ -193,7 +311,19 @@ export default function PortalCareerGuidanceSection({
         setDraft("")
     }
 
-    function handleDeleteThread(threadId: string) {
+    async function handleDeleteThread(threadId: string) {
+        if (deleteConversationMutation.isPending) {
+            return
+        }
+
+        if (shouldUseBackendConversations) {
+            try {
+                await deleteConversationMutation.deleteConversationAsync(threadId)
+            } catch {
+                return
+            }
+        }
+
         setThreads((currentThreads) => {
             const threadIndex = currentThreads.findIndex(
                 (thread) => thread.id === threadId,
@@ -214,7 +344,7 @@ export default function PortalCareerGuidanceSection({
         })
     }
 
-    function submitPrompt(prompt: string) {
+    async function submitPrompt(prompt: string) {
         const trimmedPrompt = prompt.trim()
 
         if (!trimmedPrompt || isReplying) {
@@ -225,7 +355,22 @@ export default function PortalCareerGuidanceSection({
         let targetThreadId = selectedThreadId
 
         if (!targetThreadId) {
-            const newThread = createGuidanceThread(trimmedPrompt, [userMessage])
+            let createdConversation = null
+
+            try {
+                createdConversation = shouldUseBackendConversations
+                    ? await createConversationMutation.createConversationAsync()
+                    : null
+            } catch {
+                return
+            }
+
+            const newThread = createGuidanceThread(
+                createdConversation?.title || trimmedPrompt,
+                [userMessage],
+                createdConversation?.id,
+                createdConversation?.messageCount,
+            )
             targetThreadId = newThread.id
             setThreads((currentThreads) => [newThread, ...currentThreads])
             setSelectedThreadId(newThread.id)
@@ -250,10 +395,44 @@ export default function PortalCareerGuidanceSection({
         setIsReplying(true)
 
         const currentTargetThreadId = targetThreadId
-        replyTimeoutRef.current = window.setTimeout(() => {
+        try {
+            const response = await askCareerGuidanceMutation.askAsync({
+                question: trimmedPrompt,
+                conversationId:
+                    currentTargetThreadId &&
+                    !currentTargetThreadId.includes("محادثة جديدة") &&
+                    !currentTargetThreadId.includes("Ù…Ø­Ø§Ø¯Ø«Ø© Ø¬Ø¯ÙŠØ¯Ø©")
+                        ? currentTargetThreadId
+                        : undefined,
+            })
             const assistantMessage = createGuidanceMessage(
                 "assistant",
-                createAssistantReply(role, trimmedPrompt),
+                response.answer,
+            )
+
+            setThreads((currentThreads) =>
+                currentThreads.map((thread) =>
+                    thread.id === currentTargetThreadId
+                        ? {
+                              ...thread,
+                              id: response.conversationId || thread.id,
+                              title: response.title || thread.title,
+                              messages: [...thread.messages, assistantMessage],
+                              messageCount:
+                                  typeof thread.messageCount === "number"
+                                      ? thread.messageCount + 2
+                                      : thread.messages.length + 2,
+                          }
+                        : thread,
+                ),
+            )
+            if (response.conversationId) {
+                setSelectedThreadId(response.conversationId)
+            }
+        } catch {
+            const assistantMessage = createGuidanceMessage(
+                "assistant",
+                "تعذر إرسال الرسالة حالياً. حاول مرة أخرى بعد قليل.",
             )
 
             setThreads((currentThreads) =>
@@ -266,13 +445,80 @@ export default function PortalCareerGuidanceSection({
                         : thread,
                 ),
             )
+        } finally {
             setIsReplying(false)
-            replyTimeoutRef.current = null
-        }, 700)
+        }
     }
 
     function handleSendMessage() {
-        submitPrompt(draft)
+        void submitPrompt(draft)
+    }
+
+    async function handleRequestProfileAdvice() {
+        if (isReplying || profileAdviceMutation.isPending || role !== "user") {
+            return
+        }
+
+        let targetThreadId = selectedThreadId
+
+        if (!targetThreadId) {
+            try {
+                const conversation =
+                    await createConversationMutation.createConversationAsync()
+                const newThread = createGuidanceThread(
+                    conversation.title,
+                    [],
+                    conversation.id,
+                    conversation.messageCount,
+                )
+
+                targetThreadId = newThread.id
+                setThreads((currentThreads) => [newThread, ...currentThreads])
+                setSelectedThreadId(newThread.id)
+            } catch {
+                return
+            }
+        }
+
+        setIsReplying(true)
+
+        try {
+            const advice = await profileAdviceMutation.getAdviceAsync()
+            const assistantMessage = createGuidanceMessage("assistant", advice)
+
+            setThreads((currentThreads) =>
+                currentThreads.map((thread) =>
+                    thread.id === targetThreadId
+                        ? {
+                              ...thread,
+                              messages: [...thread.messages, assistantMessage],
+                              messageCount:
+                                  typeof thread.messageCount === "number"
+                                      ? thread.messageCount + 1
+                                      : thread.messages.length + 1,
+                          }
+                        : thread,
+                ),
+            )
+        } catch {
+            const assistantMessage = createGuidanceMessage(
+                "assistant",
+                "تعذر تحليل ملفك الشخصي حالياً. حاول مرة أخرى بعد قليل.",
+            )
+
+            setThreads((currentThreads) =>
+                currentThreads.map((thread) =>
+                    thread.id === targetThreadId
+                        ? {
+                              ...thread,
+                              messages: [...thread.messages, assistantMessage],
+                          }
+                        : thread,
+                ),
+            )
+        } finally {
+            setIsReplying(false)
+        }
     }
 
     return (
@@ -322,7 +568,10 @@ export default function PortalCareerGuidanceSection({
                                         المحادثات
                                     </p>
                                     <p className="mt-1 mb-0 text-size13 font-medium text-[#6c7788]">
-                                        {threads.length} محادثة محفوظة
+                                        {shouldUseBackendConversations &&
+                                        conversationsQuery.isLoading
+                                            ? "جارٍ تحميل المحادثات..."
+                                            : `${threads.length} محادثة محفوظة`}
                                     </p>
                                 </div>
 
@@ -330,6 +579,7 @@ export default function PortalCareerGuidanceSection({
                                     type="button"
                                     variant="panel"
                                     size="normal"
+                                    disabled={createConversationMutation.isPending}
                                     onClick={handleCreateThread}
                                     className="inline-flex min-h-[40px] items-center justify-center rounded-[12px] border border-[#4da76f] bg-[#5ab37b] !px-3 !py-2 !text-size14 !font-bold !text-white hover:!brightness-105"
                                 >
@@ -339,7 +589,34 @@ export default function PortalCareerGuidanceSection({
                             </div>
 
                             <div className="grid gap-2 xl:max-h-[482px] xl:overflow-y-auto xl:pl-1">
-                                {threads.map((thread) => {
+                                {shouldUseBackendConversations &&
+                                conversationsQuery.isLoading ? (
+                                    <div className="rounded-[14px] border border-[#e2ebf6] bg-[#f8fbff] px-3 py-4 text-center text-size14 font-bold text-[#5d6b82]">
+                                        جارٍ تحميل سجل المحادثات...
+                                    </div>
+                                ) : null}
+
+                                {shouldUseBackendConversations &&
+                                !conversationsQuery.isLoading &&
+                                conversationsQuery.isError ? (
+                                    <div className="rounded-[14px] border border-[#ffd4d0] bg-[#fff7f6] px-3 py-4 text-center text-size14 font-bold text-[#b94842]">
+                                        تعذر تحميل المحادثات حالياً.
+                                    </div>
+                                ) : null}
+
+                                {shouldUseBackendConversations &&
+                                !conversationsQuery.isLoading &&
+                                !conversationsQuery.isError &&
+                                !threads.length ? (
+                                    <div className="rounded-[14px] border border-[#e2ebf6] bg-[#f8fbff] px-3 py-4 text-center text-size14 font-bold text-[#5d6b82]">
+                                        لا توجد محادثات محفوظة بعد.
+                                    </div>
+                                ) : null}
+
+                                {(!shouldUseBackendConversations ||
+                                    (!conversationsQuery.isLoading &&
+                                        !conversationsQuery.isError)) &&
+                                    threads.map((thread) => {
                                     const isSelected = thread.id === selectedThreadId
 
                                     return (
@@ -362,14 +639,26 @@ export default function PortalCareerGuidanceSection({
                                                 <span className="block truncate">
                                                     {thread.title}
                                                 </span>
+                                                {typeof thread.messageCount ===
+                                                    "number" &&
+                                                thread.messageCount > 0 ? (
+                                                    <span className="mr-auto rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-bold text-[#6d788b]">
+                                                        {thread.messageCount}
+                                                    </span>
+                                                ) : null}
                                             </button>
 
                                             <button
                                                 type="button"
-                                                onClick={() =>
-                                                    handleDeleteThread(thread.id)
+                                                disabled={
+                                                    deleteConversationMutation.isPending
                                                 }
-                                                className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-[#b94842] opacity-70 transition duration-200 hover:bg-[#fff1f0] hover:opacity-100"
+                                                onClick={() =>
+                                                    void handleDeleteThread(
+                                                        thread.id,
+                                                    )
+                                                }
+                                                className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-[#b94842] opacity-70 transition duration-200 hover:bg-[#fff1f0] hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
                                                 aria-label="حذف المحادثة"
                                             >
                                                 <Trash2 className="size-4" />
@@ -408,7 +697,13 @@ export default function PortalCareerGuidanceSection({
                             </div>
 
                             <div className="flex flex-1 flex-col px-5 py-5 sm:px-6">
-                                {selectedThread?.messages.length ? (
+                                {isSelectedConversationLoading ? (
+                                    <div className="mb-5 flex flex-1 items-center justify-center">
+                                        <div className="rounded-[18px] border border-[#e2ebf6] bg-white px-5 py-4 text-size15 font-bold text-[#6d788b] shadow-sm">
+                                            جارٍ تحميل رسائل المحادثة...
+                                        </div>
+                                    </div>
+                                ) : selectedThread?.messages.length ? (
                                     <div className="mb-5 flex-1 space-y-4 overflow-y-auto pl-1">
                                         {selectedThread.messages.map((message) => (
                                             <MessageBubble
@@ -439,6 +734,22 @@ export default function PortalCareerGuidanceSection({
                                         </p>
 
                                         <div className="mt-6 flex flex-wrap justify-center gap-3">
+                                            {role === "user" ? (
+                                                <button
+                                                    type="button"
+                                                    disabled={
+                                                        isReplying ||
+                                                        profileAdviceMutation.isPending
+                                                    }
+                                                    onClick={() =>
+                                                        void handleRequestProfileAdvice()
+                                                    }
+                                                    className="rounded-full border border-[#f0c070] bg-[#fff7ed] px-4 py-2 text-size14 font-bold text-warning-color transition duration-200 hover:border-warning-color hover:bg-[#fff1dc] disabled:cursor-not-allowed disabled:opacity-60"
+                                                >
+                                                    حلّل ملفي واقترح خطة تطوير
+                                                </button>
+                                            ) : null}
+
                                             {quickPrompts.map((prompt) => (
                                                 <button
                                                     key={prompt}
@@ -476,8 +787,8 @@ function MessageBubble({ message }: { message: GuidanceMessage }) {
             <div
                 className={
                     isUser
-                        ? "max-w-[86%] rounded-[18px] rounded-bl-[6px] bg-[#5f7fd2] px-4 py-3 text-right text-size15 font-medium leading-8 text-white shadow-[0_10px_22px_rgb(58_88_171_/_0.18)] sm:max-w-[72%]"
-                        : "max-w-[86%] rounded-[18px] rounded-br-[6px] border border-[#e2ebf6] bg-white px-4 py-3 text-right text-size15 font-medium leading-8 text-[#344055] shadow-sm sm:max-w-[72%]"
+                        ? "max-w-[86%] whitespace-pre-wrap rounded-[18px] rounded-bl-[6px] bg-[#5f7fd2] px-4 py-3 text-right text-size15 font-medium leading-8 text-white shadow-[0_10px_22px_rgb(58_88_171_/_0.18)] sm:max-w-[72%]"
+                        : "max-w-[86%] whitespace-pre-wrap rounded-[18px] rounded-br-[6px] border border-[#e2ebf6] bg-white px-4 py-3 text-right text-size15 font-medium leading-8 text-[#344055] shadow-sm sm:max-w-[72%]"
                 }
             >
                 {message.text}
