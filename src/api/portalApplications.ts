@@ -175,6 +175,7 @@ interface ApiApplicantProfile {
 }
 
 interface ApiJobApplicationDetailResponse {
+    _id?: string
     id?: string
     date?: string
     status?: string | null
@@ -187,9 +188,12 @@ interface ApiJobApplicationDetailResponse {
         location?: string | null
     } | null
     applicantProfile?: ApiApplicantProfile | null
+    seekerProfile?: ApiApplicantProfile | null
+    seeker?: ApiApplicantProfile | ApiApplicationSeekerSummary | null
 }
 
 interface ApiTrainingApplicationDetailResponse {
+    _id?: string
     id?: string
     date?: string
     status?: string | null
@@ -202,6 +206,8 @@ interface ApiTrainingApplicationDetailResponse {
         location?: string | null
     } | null
     applicantProfile?: ApiApplicantProfile | null
+    seekerProfile?: ApiApplicantProfile | null
+    seeker?: ApiApplicantProfile | ApiApplicationSeekerSummary | null
 }
 
 export interface PortalCompanyApplicationSummaryItem {
@@ -378,6 +384,43 @@ function mapApplicantProfileToPersonProfileData(
     }
 }
 
+function isApplicantProfile(value: unknown): value is ApiApplicantProfile {
+    return Boolean(
+        value &&
+            typeof value === "object" &&
+            ("fullName" in value ||
+                "personalInfo" in value ||
+                "experience" in value ||
+                "education" in value ||
+                "languages" in value ||
+                "profilePictureUrl" in value),
+    )
+}
+
+function resolveApplicantProfile(
+    application:
+        | ApiJobApplicationDetailResponse
+        | ApiTrainingApplicationDetailResponse,
+): ApiApplicantProfile | null {
+    if (application.applicantProfile) {
+        return application.applicantProfile
+    }
+
+    if (application.seekerProfile) {
+        return application.seekerProfile
+    }
+
+    if (isApplicantProfile(application.seeker)) {
+        return application.seeker
+    }
+
+    if (isApplicantProfile(application)) {
+        return application as ApiApplicantProfile
+    }
+
+    return null
+}
+
 function mapJobApplicationSummary(
     application: ApiJobApplicationSummaryItem,
 ): PortalCompanyApplicationSummaryItem {
@@ -427,10 +470,12 @@ function mapTrainingApplicationSummary(
 function mapJobApplicationDetail(
     application: ApiJobApplicationDetailResponse,
 ): PortalCompanyApplicationDetailRecord {
+    const applicantProfile = resolveApplicantProfile(application)
+
     return {
-        id: formatValue(application.id),
+        id: formatValue(application.id ?? application._id ?? applicantProfile?._id),
         applicantName: formatValue(
-            application.applicantProfile?.fullName,
+            applicantProfile?.fullName,
             "متقدم جديد",
         ),
         submittedAt: formatDisplayDate(application.date),
@@ -439,25 +484,20 @@ function mapJobApplicationDetail(
         cvFileId: formatValue(application.cvFileId),
         cvFilename: formatValue(application.cvFilename),
         cvUrl: getApiAssetUrl(application.cvUrl),
-        avatarSrc: getApiAssetUrl(
-            application.applicantProfile?.profilePictureUrl,
-        ),
-        profileData: mapApplicantProfileToPersonProfileData(
-            application.applicantProfile,
-        ),
+        avatarSrc: getApiAssetUrl(applicantProfile?.profilePictureUrl),
+        profileData: mapApplicantProfileToPersonProfileData(applicantProfile),
     }
 }
 
 function mapTrainingApplicationDetail(
     application: ApiTrainingApplicationDetailResponse,
 ): PortalCompanyApplicationDetailRecord {
-    const applicantProfile =
-        application.applicantProfile ?? (application as ApiApplicantProfile)
+    const applicantProfile = resolveApplicantProfile(application)
 
     return {
-        id: formatValue(application.id ?? applicantProfile._id),
+        id: formatValue(application.id ?? application._id ?? applicantProfile?._id),
         applicantName: formatValue(
-            applicantProfile.fullName,
+            applicantProfile?.fullName,
             "متقدم جديد",
         ),
         submittedAt: formatDisplayDate(application.date),
@@ -466,7 +506,7 @@ function mapTrainingApplicationDetail(
         cvFileId: formatValue(application.cvFileId),
         cvFilename: formatValue(application.cvFilename),
         cvUrl: getApiAssetUrl(application.cvUrl),
-        avatarSrc: getApiAssetUrl(applicantProfile.profilePictureUrl),
+        avatarSrc: getApiAssetUrl(applicantProfile?.profilePictureUrl),
         profileData: mapApplicantProfileToPersonProfileData(applicantProfile),
     }
 }

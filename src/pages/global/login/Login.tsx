@@ -2,7 +2,7 @@ import { type FormEvent, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { resolveAuthRedirect, useLogin } from "../../../api";
+import { resolveAuthRedirect, resolveAuthRole, useLogin } from "../../../api";
 import { demoCurrentAdminCredentials } from "../../../api/adminManagers";
 import blueLogo from "../../../assets/icons/blue_logo.png";
 
@@ -71,7 +71,17 @@ function Login({
         email: email.trim(),
         password,
       });
-      navigate(safeRedirectPath ?? resolveAuthRedirect(response), {
+      const authRedirectPath = resolveAuthRedirect(response);
+      const resolvedRole = resolveAuthRole(response.role ?? response.user?.role);
+      const canUseRequestedRedirect =
+        safeRedirectPath &&
+        ((resolvedRole === "company" && safeRedirectPath.startsWith("/company")) ||
+          (resolvedRole === "admin" && safeRedirectPath.startsWith("/admin")) ||
+          (resolvedRole === "seeker" &&
+            !safeRedirectPath.startsWith("/company") &&
+            !safeRedirectPath.startsWith("/admin")));
+
+      navigate(canUseRequestedRedirect ? safeRedirectPath : authRedirectPath, {
         replace: true,
       });
     } finally {

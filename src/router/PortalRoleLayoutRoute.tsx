@@ -90,6 +90,17 @@ export default function PortalRoleLayoutRoute({
         )
     }
 
+    if (!authProfileQuery.isLoading && authProfileQuery.role) {
+        const expectedProfileRole = role === "company" ? "company" : "seeker"
+
+        if (authProfileQuery.role !== expectedProfileRole) {
+            const nextPath =
+                authProfileQuery.role === "company" ? "/company" : "/"
+
+            return <Navigate to={nextPath} replace />
+        }
+    }
+
     return (
         <PortalLayout
             role={role}

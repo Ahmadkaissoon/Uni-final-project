@@ -12,6 +12,7 @@ export {
   hasAuthSession,
   readRegisterCredentials,
   REGISTER_CREDENTIALS_STORAGE_KEY,
+  resolveAuthRole,
   resolveAuthRedirect,
   storeAuthTokens,
   useLogin,

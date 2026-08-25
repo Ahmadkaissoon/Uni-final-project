@@ -1,4 +1,5 @@
 import type { PortalProfile, PortalRole } from "../components/layout/PortalLayout"
+import { resolveAuthRole } from "./auth"
 import { useGetData } from "./useQueries"
 
 interface ApiSeekerProfile {
@@ -90,6 +91,7 @@ export function usePortalAuthProfile(role: PortalRole, enabled = true) {
 
     return {
         ...query,
+        role: query.data ? resolveAuthRole(query.data.role) : undefined,
         profile: query.data
             ? mapApiAuthProfileToPortalProfile(role, query.data)
             : null,

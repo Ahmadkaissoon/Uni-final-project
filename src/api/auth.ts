@@ -231,25 +231,43 @@ function clearPortalProfileQueries() {
   }
 }
 
-function resolveAuthProfileRole(role?: string[] | string) {
-  return Array.isArray(role) ? role[0] : role;
+export function resolveAuthRole(role?: string[] | string) {
+  const resolvedRole = Array.isArray(role) ? role[0] : role;
+  const normalizedRole = resolvedRole?.trim().toLowerCase();
+
+  if (normalizedRole === "admin") {
+    return "admin";
+  }
+
+  if (normalizedRole === "company") {
+    return "company";
+  }
+
+  if (normalizedRole === "seeker" || normalizedRole === "user") {
+    return "seeker";
+  }
+
+  return undefined;
 }
 
 async function hydratePortalProfileQueries() {
   const response = await axiosClient.get<AuthProfileResponse>("/auth/profile");
   const profile = response.data;
-  const role = resolveAuthProfileRole(profile.role);
+  const role = resolveAuthRole(profile.role);
 
   if (role === "company") {
     queryClient.setQueryData(["portal-auth-profile", "company"], profile);
     queryClient.setQueryData(["portal-company-profile"], profile);
-    return;
+    return role;
   }
 
   if (role === "seeker") {
     queryClient.setQueryData(["portal-auth-profile", "user"], profile);
     queryClient.setQueryData(["portal-user-profile"], profile);
+    return role;
   }
+
+  return role;
 }
 
 export function storeAuthTokens(tokens: AuthTokens) {
@@ -383,7 +401,11 @@ async function login(payload: LoginPayload) {
   clearPortalProfileQueries();
 
   try {
-    await hydratePortalProfileQueries();
+    const profileRole = await hydratePortalProfileQueries();
+
+    if (!response.data.role && profileRole) {
+      response.data.role = profileRole;
+    }
   } catch {
     clearPortalProfileQueries();
   }
@@ -420,10 +442,11 @@ async function logout() {
 }
 
 export function resolveAuthRedirect(response: LoginResponse | SignupResponse) {
-  const role =
+  const role = resolveAuthRole(
     "role" in response
       ? response.role ?? response.user?.role
-      : (response.user as AuthUser | undefined)?.role;
+      : (response.user as AuthUser | undefined)?.role,
+  );
 
   if (role === "admin") {
     return "/admin";
