@@ -6,6 +6,7 @@ import type {
 } from "../utils/portalProfileSchemas";
 import { withApiToast } from "./apiToast";
 import axiosClient from "./axiosClient";
+import { queryClient } from "./queryClient";
 
 export const REGISTER_CREDENTIALS_STORAGE_KEY = "register-credentials";
 const REGISTER_ACCOUNT_ROLE_STORAGE_KEY = "selected-account-role";
@@ -21,6 +22,12 @@ const REGISTER_PROFILE_STORAGE_KEYS = [
   "portal.user.profile",
   "portal.user.profile.avatar",
 ];
+const PORTAL_PROFILE_QUERY_KEYS = [
+  ["portal-auth-profile", "user"],
+  ["portal-auth-profile", "company"],
+  ["portal-user-profile"],
+  ["portal-company-profile"],
+] as const;
 
 export interface RegisterCredentials {
   email: string;
@@ -54,6 +61,10 @@ export interface SignupResponse extends AuthTokens {
 
 export interface LogoutResponse {
   message?: string;
+}
+
+interface AuthProfileResponse {
+  role?: string[] | string;
 }
 
 export interface SeekerSignupDataPayload extends RegisterCredentials {
@@ -201,6 +212,46 @@ function clearRegisterDraftData() {
   }
 }
 
+function clearStoredPortalProfileData() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  for (const storageKey of REGISTER_PROFILE_STORAGE_KEYS) {
+    window.localStorage.removeItem(storageKey);
+  }
+}
+
+function clearPortalProfileQueries() {
+  for (const queryKey of PORTAL_PROFILE_QUERY_KEYS) {
+    queryClient.removeQueries({
+      queryKey,
+      exact: true,
+    });
+  }
+}
+
+function resolveAuthProfileRole(role?: string[] | string) {
+  return Array.isArray(role) ? role[0] : role;
+}
+
+async function hydratePortalProfileQueries() {
+  const response = await axiosClient.get<AuthProfileResponse>("/auth/profile");
+  const profile = response.data;
+  const role = resolveAuthProfileRole(profile.role);
+
+  if (role === "company") {
+    queryClient.setQueryData(["portal-auth-profile", "company"], profile);
+    queryClient.setQueryData(["portal-company-profile"], profile);
+    return;
+  }
+
+  if (role === "seeker") {
+    queryClient.setQueryData(["portal-auth-profile", "user"], profile);
+    queryClient.setQueryData(["portal-user-profile"], profile);
+  }
+}
+
 export function storeAuthTokens(tokens: AuthTokens) {
   if (typeof window === "undefined") {
     return;
@@ -224,6 +275,9 @@ export function clearAuthSession() {
     window.localStorage.removeItem(storageKey);
     window.sessionStorage.removeItem(storageKey);
   }
+
+  clearStoredPortalProfileData();
+  clearPortalProfileQueries();
 }
 
 export function hasAuthSession() {
@@ -324,6 +378,16 @@ async function login(payload: LoginPayload) {
   );
 
   storeAuthTokens(response.data);
+
+  clearStoredPortalProfileData();
+  clearPortalProfileQueries();
+
+  try {
+    await hydratePortalProfileQueries();
+  } catch {
+    clearPortalProfileQueries();
+  }
+
   return response.data;
 }
 

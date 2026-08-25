@@ -2,6 +2,7 @@ import { Camera, ChevronDown, Plus, SendHorizontal, Trash2 } from "lucide-react"
 import {
     type ChangeEvent,
     type ReactNode,
+    useEffect,
     useMemo,
     useRef,
     useState,
@@ -305,6 +306,19 @@ export default function PortalSeekerProfileSection({
     const [removeProfilePicture, setRemoveProfilePicture] = useState(false)
     const [feedback, setFeedback] = useState<FeedbackState>(null)
     const profilePictureInputRef = useRef<HTMLInputElement | null>(null)
+
+    useEffect(() => {
+        const nextFormData = cloneFormData(profile)
+        const nextAvatarSrc = avatarSrc ?? null
+
+        setSavedValues(nextFormData)
+        setFormData(nextFormData)
+        setSavedAvatarSrc(nextAvatarSrc)
+        setAvatarPreview(nextAvatarSrc)
+        setSelectedProfilePicture(null)
+        setRemoveProfilePicture(false)
+        setFeedback(null)
+    }, [avatarSrc, profile])
 
     const resolvedDisplayName = useMemo(() => {
         return formData.fullName.trim() || "أحمد فيسون"
