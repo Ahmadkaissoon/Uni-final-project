@@ -560,8 +560,8 @@ export default function PortalCareerGuidanceSection({
                         </div>
                     </div>
 
-                    <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
-                        <aside className="portal-category-card-shadow rounded-[22px] border border-[#e2ebf6] bg-white p-4 text-right sm:p-5">
+                    <div className="grid items-start gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
+                        <aside className="portal-category-card-shadow rounded-[22px] border border-[#e2ebf6] bg-white p-4 text-right sm:p-5 xl:sticky xl:top-28 xl:max-h-[calc(100vh-8rem)] xl:overflow-hidden">
                             <div className="mb-5 flex items-center justify-between gap-3">
                                 <div>
                                     <p className="m-0 text-size17 font-bold text-[#233047]">
@@ -588,7 +588,7 @@ export default function PortalCareerGuidanceSection({
                                 </Button>
                             </div>
 
-                            <div className="grid gap-2 xl:max-h-[482px] xl:overflow-y-auto xl:pl-1">
+                            <div className="grid min-w-0 gap-2 overflow-x-hidden xl:max-h-[calc(100vh-17rem)] xl:overflow-y-auto xl:pl-1">
                                 {shouldUseBackendConversations &&
                                 conversationsQuery.isLoading ? (
                                     <div className="rounded-[14px] border border-[#e2ebf6] bg-[#f8fbff] px-3 py-4 text-center text-size14 font-bold text-[#5d6b82]">
@@ -624,8 +624,8 @@ export default function PortalCareerGuidanceSection({
                                             key={thread.id}
                                             className={
                                                 isSelected
-                                                    ? "group flex items-center gap-2 rounded-[14px] border border-[#aac0ee] bg-[#eef5ff] px-3 py-3 text-[#25407e]"
-                                                    : "group flex items-center gap-2 rounded-[14px] border border-transparent px-3 py-3 text-[#4d596b] transition duration-200 hover:border-[#e2ebf6] hover:bg-[#f8fbff]"
+                                                    ? "group flex min-w-0 items-center gap-2 overflow-hidden rounded-[14px] border border-[#aac0ee] bg-[#eef5ff] px-3 py-3 text-[#25407e]"
+                                                    : "group flex min-w-0 items-center gap-2 overflow-hidden rounded-[14px] border border-transparent px-3 py-3 text-[#4d596b] transition duration-200 hover:border-[#e2ebf6] hover:bg-[#f8fbff]"
                                             }
                                         >
                                             <button
@@ -633,16 +633,16 @@ export default function PortalCareerGuidanceSection({
                                                 onClick={() =>
                                                     setSelectedThreadId(thread.id)
                                                 }
-                                                className="flex min-w-0 flex-1 items-center gap-2 bg-transparent p-0 text-right text-size14 font-bold text-inherit"
+                                                className="flex min-w-0 flex-1 overflow-hidden items-center gap-2 bg-transparent p-0 text-right text-size14 font-bold text-inherit"
                                             >
                                                 <MessageCircle className="size-4 shrink-0" />
-                                                <span className="block truncate">
+                                                <span className="block min-w-0 flex-1 truncate">
                                                     {thread.title}
                                                 </span>
                                                 {typeof thread.messageCount ===
                                                     "number" &&
                                                 thread.messageCount > 0 ? (
-                                                    <span className="mr-auto rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-bold text-[#6d788b]">
+                                                    <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-bold text-[#6d788b]">
                                                         {thread.messageCount}
                                                     </span>
                                                 ) : null}
@@ -703,9 +703,10 @@ export default function PortalCareerGuidanceSection({
                                             جارٍ تحميل رسائل المحادثة...
                                         </div>
                                     </div>
-                                ) : selectedThread?.messages.length ? (
+                                ) : selectedThread?.messages.length ||
+                                  isReplying ? (
                                     <div className="mb-5 flex-1 space-y-4 overflow-y-auto pl-1">
-                                        {selectedThread.messages.map((message) => (
+                                        {selectedThread?.messages.map((message) => (
                                             <MessageBubble
                                                 key={message.id}
                                                 message={message}
@@ -713,11 +714,7 @@ export default function PortalCareerGuidanceSection({
                                         ))}
 
                                         {isReplying ? (
-                                            <div className="flex justify-start">
-                                                <div className="rounded-[18px] rounded-br-[6px] border border-[#e2ebf6] bg-white px-4 py-3 text-size15 font-medium text-[#7a8495] shadow-sm">
-                                                    جاري تجهيز الإجابة...
-                                                </div>
-                                            </div>
+                                            <AssistantTypingLoader />
                                         ) : null}
                                     </div>
                                 ) : (
@@ -776,6 +773,27 @@ export default function PortalCareerGuidanceSection({
                 </div>
             </div>
         </section>
+    )
+}
+
+function AssistantTypingLoader() {
+    return (
+        <div className="flex justify-start">
+            <div className="flex max-w-[86%] items-center gap-3 rounded-[18px] rounded-br-[6px] border border-[#e2ebf6] bg-white px-4 py-3 text-right text-size15 font-bold text-[#667386] shadow-sm sm:max-w-[72%]">
+                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-[12px] bg-[#eef5ff] text-[#335cae]">
+                    <Bot className="size-5" />
+                </span>
+                <span>جارٍ تجهيز الإجابة</span>
+                <span
+                    className="inline-flex items-center gap-1"
+                    aria-hidden="true"
+                >
+                    <span className="size-2 animate-bounce rounded-full bg-[#5f7fd2] [animation-delay:-0.2s]" />
+                    <span className="size-2 animate-bounce rounded-full bg-[#5f7fd2] [animation-delay:-0.1s]" />
+                    <span className="size-2 animate-bounce rounded-full bg-[#5f7fd2]" />
+                </span>
+            </div>
+        </div>
     )
 }
 
