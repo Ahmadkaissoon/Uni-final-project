@@ -124,6 +124,75 @@ function createGuidanceMessage(
     }
 }
 
+const careerGuidanceAllowedTerms = [
+    "عمل",
+    "وظيفة",
+    "وظائف",
+    "توظيف",
+    "شركة",
+    "شركات",
+    "مقابلة",
+    "سيرة",
+    "cv",
+    "resume",
+    "خبرة",
+    "مهارة",
+    "مهارات",
+    "راتب",
+    "رواتب",
+    "تدريب",
+    "مسار",
+    "مهني",
+    "مهنة",
+    "career",
+    "job",
+    "jobs",
+    "work",
+    "company",
+    "interview",
+    "hiring",
+    "recruitment",
+    "portfolio",
+    "linkedin",
+    "github",
+    "hr",
+    "employee",
+    "candidate",
+    "business",
+    "team",
+    "leadership",
+]
+
+const outOfScopeGuidanceReply =
+    "أستطيع مساعدتك فقط في الإرشاد الوظيفي وسوق العمل والشركات والتقديم والمقابلات وتطوير المهارات المهنية. اسألني ضمن هذا المجال وسأعطيك جواباً دقيقاً ومباشراً."
+
+function isCareerGuidancePrompt(prompt: string) {
+    const normalizedPrompt = prompt.trim().toLowerCase()
+
+    return careerGuidanceAllowedTerms.some((term) =>
+        normalizedPrompt.includes(term),
+    )
+}
+
+function buildCareerGuidanceQuestion(role: PortalRole, prompt: string) {
+    const audience =
+        role === "company"
+            ? "الشركات والتوظيف وإدارة المتقدمين"
+            : "الباحثين عن عمل وتطوير المسار المهني"
+
+    return [
+        "تعليمات الإجابة:",
+        `- أجب فقط ضمن مجال الإرشاد الوظيفي وسوق العمل والعمل والشركات و${audience}.`,
+        "- إذا كان السؤال خارج هذا المجال، اعتذر باختصار واطلب سؤالاً متعلقاً بالعمل أو المسار المهني.",
+        "- اجعل الإجابة باللغة العربية فقط، مع السماح بمصطلحات إنجليزية مهنية عند الحاجة مثل CV أو LinkedIn أو HR.",
+        "- لا تتوسع خارج المطلوب. اجعل الإجابة دقيقة، عملية، ومباشرة.",
+        "- لا تقدم نصائح طبية أو قانونية أو طبخ أو مواضيع عامة غير مرتبطة بسوق العمل.",
+        "",
+        "سؤال المستخدم:",
+        prompt,
+    ].join("\n")
+}
+
 function createAssistantReply(role: PortalRole, prompt: string) {
     const normalizedPrompt = prompt.trim().toLowerCase()
 
@@ -352,6 +421,42 @@ export default function PortalCareerGuidanceSection({
         }
 
         const userMessage = createGuidanceMessage("user", trimmedPrompt)
+
+        if (!isCareerGuidancePrompt(trimmedPrompt)) {
+            const assistantMessage = createGuidanceMessage(
+                "assistant",
+                outOfScopeGuidanceReply,
+            )
+
+            if (!selectedThreadId) {
+                const newThread = createGuidanceThread(trimmedPrompt, [
+                    userMessage,
+                    assistantMessage,
+                ])
+
+                setThreads((currentThreads) => [newThread, ...currentThreads])
+                setSelectedThreadId(newThread.id)
+            } else {
+                setThreads((currentThreads) =>
+                    currentThreads.map((thread) =>
+                        thread.id === selectedThreadId
+                            ? {
+                                  ...thread,
+                                  messages: [
+                                      ...thread.messages,
+                                      userMessage,
+                                      assistantMessage,
+                                  ],
+                              }
+                            : thread,
+                    ),
+                )
+            }
+
+            setDraft("")
+            return
+        }
+
         let targetThreadId = selectedThreadId
 
         if (!targetThreadId) {
@@ -397,7 +502,7 @@ export default function PortalCareerGuidanceSection({
         const currentTargetThreadId = targetThreadId
         try {
             const response = await askCareerGuidanceMutation.askAsync({
-                question: trimmedPrompt,
+                question: buildCareerGuidanceQuestion(role, trimmedPrompt),
                 conversationId:
                     currentTargetThreadId &&
                     !currentTargetThreadId.includes("محادثة جديدة") &&
@@ -430,6 +535,10 @@ export default function PortalCareerGuidanceSection({
                 setSelectedThreadId(response.conversationId)
             }
         } catch {
+            if (!targetThreadId) {
+                return
+            }
+
             const assistantMessage = createGuidanceMessage(
                 "assistant",
                 "تعذر إرسال الرسالة حالياً. حاول مرة أخرى بعد قليل.",
@@ -459,47 +568,47 @@ export default function PortalCareerGuidanceSection({
             return
         }
 
-        let targetThreadId = selectedThreadId
-
-        if (!targetThreadId) {
-            try {
-                const conversation =
-                    await createConversationMutation.createConversationAsync()
-                const newThread = createGuidanceThread(
-                    conversation.title,
-                    [],
-                    conversation.id,
-                    conversation.messageCount,
-                )
-
-                targetThreadId = newThread.id
-                setThreads((currentThreads) => [newThread, ...currentThreads])
-                setSelectedThreadId(newThread.id)
-            } catch {
-                return
-            }
-        }
+        let targetThreadId = selectedThreadId || ""
 
         setIsReplying(true)
 
         try {
-            const advice = await profileAdviceMutation.getAdviceAsync()
-            const assistantMessage = createGuidanceMessage("assistant", advice)
+            const response = await profileAdviceMutation.getAdviceAsync()
+            targetThreadId = response.conversationId || targetThreadId
+            const assistantMessage = createGuidanceMessage(
+                "assistant",
+                response.advice,
+            )
 
             setThreads((currentThreads) =>
-                currentThreads.map((thread) =>
-                    thread.id === targetThreadId
-                        ? {
-                              ...thread,
-                              messages: [...thread.messages, assistantMessage],
-                              messageCount:
-                                  typeof thread.messageCount === "number"
-                                      ? thread.messageCount + 1
-                                      : thread.messages.length + 1,
-                          }
-                        : thread,
-                ),
+                currentThreads.some((thread) => thread.id === targetThreadId)
+                    ? currentThreads.map((thread) =>
+                          thread.id === targetThreadId
+                              ? {
+                                    ...thread,
+                                    title: response.title || thread.title,
+                                    messages: [
+                                        ...thread.messages,
+                                        assistantMessage,
+                                    ],
+                                    messageCount:
+                                        typeof thread.messageCount === "number"
+                                            ? thread.messageCount + 1
+                                            : thread.messages.length + 1,
+                                }
+                              : thread,
+                      )
+                    : [
+                          createGuidanceThread(
+                              response.title,
+                              [assistantMessage],
+                              targetThreadId,
+                              1,
+                          ),
+                          ...currentThreads,
+                      ],
             )
+            setSelectedThreadId(targetThreadId)
         } catch {
             const assistantMessage = createGuidanceMessage(
                 "assistant",
@@ -698,11 +807,7 @@ export default function PortalCareerGuidanceSection({
 
                             <div className="flex flex-1 flex-col px-5 py-5 sm:px-6">
                                 {isSelectedConversationLoading ? (
-                                    <div className="mb-5 flex flex-1 items-center justify-center">
-                                        <div className="rounded-[18px] border border-[#e2ebf6] bg-white px-5 py-4 text-size15 font-bold text-[#6d788b] shadow-sm">
-                                            جارٍ تحميل رسائل المحادثة...
-                                        </div>
-                                    </div>
+                                    <ConversationMessagesLoader />
                                 ) : selectedThread?.messages.length ||
                                   isReplying ? (
                                     <div className="mb-5 flex-1 space-y-4 overflow-y-auto pl-1">
@@ -773,6 +878,34 @@ export default function PortalCareerGuidanceSection({
                 </div>
             </div>
         </section>
+    )
+}
+
+function ConversationMessagesLoader() {
+    return (
+        <div className="mb-5 flex flex-1 items-center justify-center">
+            <div className="flex min-w-[230px] flex-col items-center gap-4 rounded-[22px] border border-[#e2ebf6] bg-white px-6 py-6 text-center shadow-[0_18px_40px_rgb(26_51_95_/_0.08)]">
+                <span className="relative inline-flex size-14 items-center justify-center rounded-[18px] bg-[#eef5ff] text-[#335cae]">
+                    <span className="absolute inset-0 animate-ping rounded-[18px] bg-[#dbeafe]" />
+                    <Bot className="relative size-7" />
+                </span>
+
+                <div>
+                    <p className="m-0 text-size16 font-extrabold text-[#233047]">
+                        جارٍ تحميل المحادثة
+                    </p>
+                    <p className="mt-1 mb-0 text-size13 font-bold text-[#6d788b]">
+                        نستعيد الرسائل السابقة الآن
+                    </p>
+                </div>
+
+                <span className="inline-flex items-center gap-1.5" aria-hidden="true">
+                    <span className="size-2.5 animate-bounce rounded-full bg-[#5f7fd2] [animation-delay:-0.2s]" />
+                    <span className="size-2.5 animate-bounce rounded-full bg-[#5f7fd2] [animation-delay:-0.1s]" />
+                    <span className="size-2.5 animate-bounce rounded-full bg-[#5f7fd2]" />
+                </span>
+            </div>
+        </div>
     )
 }
 

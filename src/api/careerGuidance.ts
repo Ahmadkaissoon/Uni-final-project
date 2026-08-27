@@ -68,7 +68,15 @@ interface ApiCareerGuidanceDeleteConversationResponse {
 }
 
 interface ApiCareerGuidanceProfileAdviceResponse {
+    conversationId?: string
+    title?: string | null
     advice?: string | null
+}
+
+export interface CareerGuidanceProfileAdviceResponse {
+    conversationId: string
+    title: string
+    advice: string
 }
 
 export interface CareerGuidanceConversationMessage {
@@ -148,6 +156,16 @@ function mapCareerGuidanceConversationDetails(
         title: formatValue(conversation.title, "محادثة بدون عنوان"),
         messages:
             conversation.messages?.map(mapCareerGuidanceMessage) ?? [],
+    }
+}
+
+function mapCareerGuidanceProfileAdviceResponse(
+    response: ApiCareerGuidanceProfileAdviceResponse,
+): CareerGuidanceProfileAdviceResponse {
+    return {
+        conversationId: formatValue(response.conversationId),
+        title: formatValue(response.title, "نصيحة مهنية مخصصة"),
+        advice: formatValue(response.advice),
     }
 }
 
@@ -297,7 +315,7 @@ export function useCareerGuidanceProfileAdvice() {
         ...mutation,
         getAdviceAsync: async () => {
             const response = await mutation.mutateAsync({})
-            return formatValue(response.advice)
+            return mapCareerGuidanceProfileAdviceResponse(response)
         },
     }
 }
