@@ -124,75 +124,6 @@ function createGuidanceMessage(
     }
 }
 
-const careerGuidanceAllowedTerms = [
-    "عمل",
-    "وظيفة",
-    "وظائف",
-    "توظيف",
-    "شركة",
-    "شركات",
-    "مقابلة",
-    "سيرة",
-    "cv",
-    "resume",
-    "خبرة",
-    "مهارة",
-    "مهارات",
-    "راتب",
-    "رواتب",
-    "تدريب",
-    "مسار",
-    "مهني",
-    "مهنة",
-    "career",
-    "job",
-    "jobs",
-    "work",
-    "company",
-    "interview",
-    "hiring",
-    "recruitment",
-    "portfolio",
-    "linkedin",
-    "github",
-    "hr",
-    "employee",
-    "candidate",
-    "business",
-    "team",
-    "leadership",
-]
-
-const outOfScopeGuidanceReply =
-    "أستطيع مساعدتك فقط في الإرشاد الوظيفي وسوق العمل والشركات والتقديم والمقابلات وتطوير المهارات المهنية. اسألني ضمن هذا المجال وسأعطيك جواباً دقيقاً ومباشراً."
-
-function isCareerGuidancePrompt(prompt: string) {
-    const normalizedPrompt = prompt.trim().toLowerCase()
-
-    return careerGuidanceAllowedTerms.some((term) =>
-        normalizedPrompt.includes(term),
-    )
-}
-
-function buildCareerGuidanceQuestion(role: PortalRole, prompt: string) {
-    const audience =
-        role === "company"
-            ? "الشركات والتوظيف وإدارة المتقدمين"
-            : "الباحثين عن عمل وتطوير المسار المهني"
-
-    return [
-        "تعليمات الإجابة:",
-        `- أجب فقط ضمن مجال الإرشاد الوظيفي وسوق العمل والعمل والشركات و${audience}.`,
-        "- إذا كان السؤال خارج هذا المجال، اعتذر باختصار واطلب سؤالاً متعلقاً بالعمل أو المسار المهني.",
-        "- اجعل الإجابة باللغة العربية فقط، مع السماح بمصطلحات إنجليزية مهنية عند الحاجة مثل CV أو LinkedIn أو HR.",
-        "- لا تتوسع خارج المطلوب. اجعل الإجابة دقيقة، عملية، ومباشرة.",
-        "- لا تقدم نصائح طبية أو قانونية أو طبخ أو مواضيع عامة غير مرتبطة بسوق العمل.",
-        "",
-        "سؤال المستخدم:",
-        prompt,
-    ].join("\n")
-}
-
 function createAssistantReply(role: PortalRole, prompt: string) {
     const normalizedPrompt = prompt.trim().toLowerCase()
 
@@ -421,42 +352,6 @@ export default function PortalCareerGuidanceSection({
         }
 
         const userMessage = createGuidanceMessage("user", trimmedPrompt)
-
-        if (!isCareerGuidancePrompt(trimmedPrompt)) {
-            const assistantMessage = createGuidanceMessage(
-                "assistant",
-                outOfScopeGuidanceReply,
-            )
-
-            if (!selectedThreadId) {
-                const newThread = createGuidanceThread(trimmedPrompt, [
-                    userMessage,
-                    assistantMessage,
-                ])
-
-                setThreads((currentThreads) => [newThread, ...currentThreads])
-                setSelectedThreadId(newThread.id)
-            } else {
-                setThreads((currentThreads) =>
-                    currentThreads.map((thread) =>
-                        thread.id === selectedThreadId
-                            ? {
-                                  ...thread,
-                                  messages: [
-                                      ...thread.messages,
-                                      userMessage,
-                                      assistantMessage,
-                                  ],
-                              }
-                            : thread,
-                    ),
-                )
-            }
-
-            setDraft("")
-            return
-        }
-
         let targetThreadId = selectedThreadId
 
         if (!targetThreadId) {
@@ -502,7 +397,7 @@ export default function PortalCareerGuidanceSection({
         const currentTargetThreadId = targetThreadId
         try {
             const response = await askCareerGuidanceMutation.askAsync({
-                question: buildCareerGuidanceQuestion(role, trimmedPrompt),
+                question: trimmedPrompt,
                 conversationId:
                     currentTargetThreadId &&
                     !currentTargetThreadId.includes("محادثة جديدة") &&
