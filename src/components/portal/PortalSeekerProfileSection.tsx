@@ -14,6 +14,7 @@ import type {
     PortalSeekerProfileSubmitPayload,
 } from "../../api/portalSeekerProfile"
 import { cn } from "../../utils/cn"
+import { jobLevelOptions } from "../../utils/portalProfileSchemas"
 import { Button } from "../global/ui/button"
 import { Skeleton } from "../global/ui/skeleton"
 
@@ -31,12 +32,7 @@ const selectOptions = {
         { value: "male", label: "ذكر" },
         { value: "female", label: "أنثى" },
     ],
-    jobLevel: [
-        { value: "junior", label: "مبتدئ" },
-        { value: "mid-level", label: "متوسط" },
-        { value: "senior", label: "متقدم" },
-        { value: "lead", label: "قائد فريق" },
-    ],
+    jobLevel: jobLevelOptions,
     workType: [
         { value: "full-time", label: "دوام كامل" },
         { value: "part-time", label: "دوام جزئي" },

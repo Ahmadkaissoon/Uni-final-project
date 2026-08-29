@@ -2,7 +2,9 @@ import { useRef, useState } from "react"
 
 import {
     buildPortalJobApplicationFormData,
+    buildPortalTrainingApplicationFormData,
     useApplyToPortalJob,
+    useApplyToPortalTraining,
 } from "../../api/portalApplications"
 import { Button } from "../global/ui/button"
 import {
@@ -16,17 +18,23 @@ interface PortalJobApplicationModalProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     jobId?: string
+    trainingId?: string
 }
 
 export default function PortalJobApplicationModal({
     open,
     onOpenChange,
     jobId,
+    trainingId,
 }: PortalJobApplicationModalProps) {
     const inputRef = useRef<HTMLInputElement | null>(null)
     const [selectedFileName, setSelectedFileName] = useState("")
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const applyToJobMutation = useApplyToPortalJob(jobId ?? null)
+    const applyToTrainingMutation = useApplyToPortalTraining(trainingId ?? null)
+    const isSubmitting =
+        applyToJobMutation.isPending || applyToTrainingMutation.isPending
+    const canSubmit = Boolean(selectedFile && (jobId || trainingId))
 
     function handlePickFile() {
         inputRef.current?.click()
@@ -56,19 +64,34 @@ export default function PortalJobApplicationModal({
     }
 
     function handleSubmit() {
-        if (!selectedFile || !jobId || applyToJobMutation.isPending) {
+        if (!selectedFile || !canSubmit || isSubmitting) {
             return
         }
 
-        applyToJobMutation.mutate(
-            buildPortalJobApplicationFormData({ jobId, cv: selectedFile }),
-            {
-                onSuccess: () => {
-                    resetFile()
-                    onOpenChange(false)
-                },
+        const mutationOptions = {
+            onSuccess: () => {
+                resetFile()
+                onOpenChange(false)
             },
-        )
+        }
+
+        if (trainingId) {
+            applyToTrainingMutation.mutate(
+                buildPortalTrainingApplicationFormData({
+                    trainingId,
+                    cv: selectedFile,
+                }),
+                mutationOptions,
+            )
+            return
+        }
+
+        if (jobId) {
+            applyToJobMutation.mutate(
+                buildPortalJobApplicationFormData({ jobId, cv: selectedFile }),
+                mutationOptions,
+            )
+        }
     }
 
     return (
@@ -122,7 +145,7 @@ export default function PortalJobApplicationModal({
                             variant="panel"
                             size="normal"
                             onClick={() => handleOpenChange(false)}
-                            disabled={applyToJobMutation.isPending}
+                            disabled={isSubmitting}
                             className="inline-flex min-h-[50px] items-center justify-center rounded-[10px] border border-[#d7dce5] bg-white !px-8 !py-3 !text-size16 !font-bold !text-black/70 hover:!bg-[#f8fafc]"
                         >
                             إلغاء
@@ -132,12 +155,8 @@ export default function PortalJobApplicationModal({
                             type="button"
                             variant="panel"
                             size="normal"
-                            loading={applyToJobMutation.isPending}
-                            disabled={
-                                !selectedFile ||
-                                !jobId ||
-                                applyToJobMutation.isPending
-                            }
+                            loading={isSubmitting}
+                            disabled={!canSubmit || isSubmitting}
                             onClick={handleSubmit}
                             className="inline-flex min-h-[50px] items-center justify-center rounded-[10px] border border-[#4da76f] bg-[#5ab37b] !px-8 !py-3 !text-size16 !font-bold !text-white hover:!brightness-105 disabled:!cursor-not-allowed disabled:!opacity-60"
                         >

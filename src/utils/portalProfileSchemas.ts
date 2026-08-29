@@ -89,6 +89,16 @@ export interface PersonProfileData {
   projectSummary: string;
 }
 
+export const jobLevelOptions: PortalProfileOption[] = [
+  { value: "junior", label: "مبتدئ / Junior" },
+  { value: "mid-level", label: "متوسط / Mid-level" },
+  { value: "senior", label: "متقدم / Senior" },
+  { value: "lead", label: "قائد فريق / Lead" },
+  { value: "manager", label: "مدير / Manager" },
+  { value: "director", label: "مدير تنفيذي لقسم / Director" },
+  { value: "executive", label: "إدارة عليا / Executive" },
+];
+
 export const emptyCompanyProfileData: CompanyProfileData = {
   companyName: "",
   sector: "",
@@ -253,7 +263,14 @@ export const personProfileSections: Array<
     title: "الخبرات والمهارات",
     columnsClassName: "md:grid-cols-2 xl:grid-cols-3",
     fields: [
-      { name: "jobLevel", label: "المستوى الوظيفي", required: true },
+      {
+        name: "jobLevel",
+        label: "المستوى الوظيفي",
+        type: "select",
+        required: true,
+        placeholder: "اختر المستوى الوظيفي",
+        options: jobLevelOptions,
+      },
       {
         name: "yearsExperience",
         label: "سنوات الخبرة",

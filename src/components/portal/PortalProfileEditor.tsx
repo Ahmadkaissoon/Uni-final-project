@@ -33,6 +33,12 @@ interface PortalProfileEditorProps<T extends PortalProfileFormValues> {
   initialValues?: T;
   initialAvatarSrc?: string | null;
   topActions?: ReactNode;
+  sidebarContent?: ReactNode;
+  onSave?: (payload: {
+    formData: T;
+    avatarFile: File | null;
+    avatarSrc: string | null;
+  }) => Promise<{ formData?: T; avatarSrc?: string | null } | void>;
   entityLabelOverride?: string;
   pageDescriptionOverride?: string;
   showPageTitleBadge?: boolean;
@@ -142,6 +148,8 @@ export default function PortalProfileEditor<T extends PortalProfileFormValues>({
   initialValues,
   initialAvatarSrc,
   topActions,
+  sidebarContent,
+  onSave,
   entityLabelOverride,
   pageDescriptionOverride,
   showPageTitleBadge = true,
@@ -162,6 +170,8 @@ export default function PortalProfileEditor<T extends PortalProfileFormValues>({
     initialAvatarSrc ?? readStoredAvatar(config.avatarStorageKey),
   );
   const [feedback, setFeedback] = useState<FeedbackState>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const getFieldValue = (fieldName: Extract<keyof T, string>) =>
     String((formData as Record<string, unknown>)[fieldName] ?? "");
@@ -196,20 +206,48 @@ export default function PortalProfileEditor<T extends PortalProfileFormValues>({
     }
   };
 
-  const handleSave = () => {
-    if (isReadOnly) {
+  const handleSave = async () => {
+    if (isReadOnly || isSaving) {
       return;
     }
 
-    writeStoredProfile(config.storageKey, formData);
-    writeStoredAvatar(config.avatarStorageKey, avatarSrc);
-    setSavedValues({ ...formData });
-    setSavedAvatar(avatarSrc);
-    setFeedback({
-      type: "success",
-      message: config.saveSuccessMessage,
-    });
-    notifyPortalProfileUpdate(config.role);
+    try {
+      setIsSaving(true);
+      const saveResult = await onSave?.({
+        formData,
+        avatarFile,
+        avatarSrc,
+      });
+      const hasSaveResult =
+        typeof saveResult === "object" && saveResult !== null;
+      const nextFormData = hasSaveResult
+        ? saveResult.formData ?? formData
+        : formData;
+      const nextAvatarSrc =
+        hasSaveResult && "avatarSrc" in saveResult
+          ? saveResult.avatarSrc ?? null
+          : avatarSrc;
+
+      writeStoredProfile(config.storageKey, nextFormData);
+      writeStoredAvatar(config.avatarStorageKey, nextAvatarSrc);
+      setFormData({ ...nextFormData });
+      setSavedValues({ ...nextFormData });
+      setAvatarSrc(nextAvatarSrc);
+      setSavedAvatar(nextAvatarSrc);
+      setAvatarFile(null);
+      setFeedback({
+        type: "success",
+        message: config.saveSuccessMessage,
+      });
+      notifyPortalProfileUpdate(config.role);
+    } catch {
+      setFeedback({
+        type: "info",
+        message: "تعذر حفظ التعديلات حالياً، حاول مرة أخرى.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleReset = () => {
@@ -219,6 +257,7 @@ export default function PortalProfileEditor<T extends PortalProfileFormValues>({
 
     setFormData({ ...savedValues });
     setAvatarSrc(savedAvatar);
+    setAvatarFile(null);
     setFeedback({
       type: "info",
       message: "تمت إعادة الحقول إلى آخر نسخة محفوظة.",
@@ -235,6 +274,8 @@ export default function PortalProfileEditor<T extends PortalProfileFormValues>({
     if (!selectedFile) {
       return;
     }
+
+    setAvatarFile(selectedFile);
 
     const fileReader = new FileReader();
 
@@ -401,15 +442,17 @@ export default function PortalProfileEditor<T extends PortalProfileFormValues>({
               ) : null}
             </div>
 
+            {sidebarContent ? sidebarContent : null}
+
             {!isReadOnly ? (
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={!hasChanges}
+                  disabled={!hasChanges || isSaving}
                   className={cn(
                     "inline-flex min-h-[52px] cursor-pointer items-center justify-center gap-2 rounded-[16px] px-4 text-size16 font-bold text-white shadow-[0_12px_26px_rgba(17,45,96,0.14)] transition duration-200",
-                    hasChanges
+                    hasChanges && !isSaving
                       ? "bg-[#56a76b] hover:-translate-y-0.5"
                       : "cursor-not-allowed bg-[#96c59f] opacity-75",
                   )}
@@ -421,10 +464,10 @@ export default function PortalProfileEditor<T extends PortalProfileFormValues>({
                 <button
                   type="button"
                   onClick={handleReset}
-                  disabled={!hasChanges}
+                  disabled={!hasChanges || isSaving}
                   className={cn(
                     "inline-flex min-h-[52px] cursor-pointer items-center justify-center gap-2 rounded-[16px] px-4 text-size16 font-bold text-white shadow-[0_12px_26px_rgba(17,45,96,0.14)] transition duration-200",
-                    hasChanges
+                    hasChanges && !isSaving
                       ? "bg-[#ca5f5a] hover:-translate-y-0.5"
                       : "cursor-not-allowed bg-[#d6a09d] opacity-75",
                   )}

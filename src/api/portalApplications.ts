@@ -260,6 +260,11 @@ export interface PortalJobApplicationPayload {
     cv: File
 }
 
+export interface PortalTrainingApplicationPayload {
+    trainingId: string
+    cv: File
+}
+
 function getApiAssetUrl(path?: string | null) {
     if (!path?.trim()) {
         return null
@@ -714,11 +719,39 @@ export function useApplyToPortalJob(jobId: string | null) {
     )
 }
 
+export function useApplyToPortalTraining(trainingId: string | null) {
+    return usePostData<unknown, FormData>(
+        "/applications/trainings",
+        {},
+        {
+            toastMessages: {
+                loading: "جاري إرسال طلب التدريب...",
+                success: "تم إرسال طلب التدريب بنجاح",
+                error: "فشل إرسال طلب التدريب",
+            },
+            onSuccess: () => {
+                void queryClient.invalidateQueries({
+                    queryKey: ["portal-seeker-training-applications"],
+                })
+            },
+        },
+    )
+}
+
 export function buildPortalJobApplicationFormData(
     payload: PortalJobApplicationPayload,
 ) {
     const formData = new FormData()
     formData.append("jobId", payload.jobId)
+    formData.append("cv", payload.cv)
+    return formData
+}
+
+export function buildPortalTrainingApplicationFormData(
+    payload: PortalTrainingApplicationPayload,
+) {
+    const formData = new FormData()
+    formData.append("trainingId", payload.trainingId)
     formData.append("cv", payload.cv)
     return formData
 }

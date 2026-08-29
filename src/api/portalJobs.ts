@@ -165,6 +165,10 @@ function formatJobLevel(value?: string) {
             return "قائد فريق"
         case "manager":
             return "مدير"
+        case "director":
+            return "مدير قسم"
+        case "executive":
+            return "إدارة عليا"
         default:
             return formatSentenceValue(value)
     }
@@ -445,9 +449,9 @@ function normalizeJobLevelForApi(value: string) {
     return normalizeEnumValue(
         value,
         {
-            entry: "entry",
-            "entry level": "entry",
-            "entry-level": "entry",
+            entry: "junior",
+            "entry level": "junior",
+            "entry-level": "junior",
             junior: "junior",
             mid: "mid-level",
             middle: "mid-level",
@@ -456,9 +460,11 @@ function normalizeJobLevelForApi(value: string) {
             senior: "senior",
             lead: "lead",
             manager: "manager",
-            fresh: "entry",
-            "fresh graduate": "entry",
-            "حديث تخرج": "entry",
+            director: "director",
+            executive: "executive",
+            fresh: "junior",
+            "fresh graduate": "junior",
+            "حديث تخرج": "junior",
             مبتدئ: "junior",
             متوسط: "mid-level",
             متقدم: "senior",
@@ -466,7 +472,7 @@ function normalizeJobLevelForApi(value: string) {
             "قائد فريق": "lead",
             مدير: "manager",
         },
-        "entry",
+        "junior",
         false,
     )
 }

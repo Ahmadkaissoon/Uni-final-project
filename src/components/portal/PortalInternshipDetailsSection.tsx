@@ -252,6 +252,7 @@ export default function PortalInternshipDetailsSection({
                 <PortalJobApplicationModal
                     open={isApplicationModalOpen}
                     onOpenChange={setIsApplicationModalOpen}
+                    trainingId={internship.id}
                 />
             ) : null}
         </section>

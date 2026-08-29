@@ -2,6 +2,7 @@ import { Save, SendHorizontal, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { Button } from "../global/ui/button";
+import { jobLevelOptions } from "../../utils/portalProfileSchemas";
 import {
   CompanyFieldLabel,
   CompanyFormHeading,
@@ -57,13 +58,7 @@ const constrainedEnglishLevelOptions: SelectOption[] = [
   { value: "C2", label: "C2" },
 ];
 
-const constrainedSeniorityOptions: SelectOption[] = [
-  { value: "entry", label: "مبتدئ" },
-  { value: "junior", label: "جونيور" },
-  { value: "senior", label: "سينيور" },
-  { value: "lead", label: "قائد فريق" },
-  { value: "manager", label: "مدير" },
-];
+const constrainedSeniorityOptions: SelectOption[] = jobLevelOptions;
 
 const constrainedEducationOptions: SelectOption[] = [
   { value: "High School", label: "ثانوية" },
@@ -341,26 +336,13 @@ export default function PortalCompanyJobForm({
                 </CompanyFieldLabel>
               )}
 
-              {isConstrainedMode ? (
-                <CompanySelectField
-                  field="seniority"
-                  label="المستوى الوظيفي :"
-                  value={formData.seniority}
-                  options={constrainedSeniorityOptions}
-                  onChange={updateField}
-                />
-              ) : (
-                <CompanyFieldLabel label="المستوى الوظيفي :">
-                  <input
-                    value={formData.seniority}
-                    onChange={(event) =>
-                      updateField("seniority", event.target.value)
-                    }
-                    required
-                    className={companyFormInputClassName}
-                  />
-                </CompanyFieldLabel>
-              )}
+              <CompanySelectField
+                field="seniority"
+                label="المستوى الوظيفي :"
+                value={formData.seniority}
+                options={constrainedSeniorityOptions}
+                onChange={updateField}
+              />
 
               {isConstrainedMode ? (
                 <CompanySelectField

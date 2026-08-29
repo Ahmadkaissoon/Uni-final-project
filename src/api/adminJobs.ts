@@ -41,6 +41,7 @@ interface RawCompanySummary {
 
 interface RawJobsSummaryResponse {
   jobs: RawJob[];
+  usersRequestedJobs?: number | null;
 }
 
 interface RawCompaniesSummaryResponse {
@@ -177,7 +178,12 @@ function mapJob(job: RawJob, companiesMap: Map<string, RawCompanySummary>) {
   } satisfies AdminJobRecord;
 }
 
-export async function getAdminJobs(): Promise<AdminJobRecord[]> {
+export interface AdminJobsSummary {
+  jobs: AdminJobRecord[];
+  totalRequests: number;
+}
+
+export async function getAdminJobs(): Promise<AdminJobsSummary> {
   const [jobsResponse, companiesResponse] = await Promise.all([
     axiosClient.get<RawJobsSummaryResponse>("/dashboard/job/summary"),
     axiosClient.get<RawCompaniesSummaryResponse>("/dashboard/company/summary"),
@@ -187,5 +193,12 @@ export async function getAdminJobs(): Promise<AdminJobRecord[]> {
     companiesResponse.data.companies.map((company) => [company._id, company]),
   );
 
-  return jobsResponse.data.jobs.map((job) => mapJob(job, companiesMap));
+  const jobs = jobsResponse.data.jobs.map((job) => mapJob(job, companiesMap));
+
+  return {
+    jobs,
+    totalRequests:
+      jobsResponse.data.usersRequestedJobs ??
+      jobs.reduce((total, job) => total + job.applicationsCount, 0),
+  };
 }

@@ -20,6 +20,7 @@ import Stepper, {
 } from "../../../components/global/stepper/Stepper";
 import {
   emptyPersonProfileData,
+  jobLevelOptions,
   personProfileEditorConfig,
   type PersonProfileData,
 } from "../../../utils/portalProfileSchemas";
@@ -457,11 +458,23 @@ function PersonProfileWizard() {
       return (
         <div className="grid gap-x-4 gap-y-5 md:grid-cols-2 xl:grid-cols-3">
           <FieldLabel label="المستوى الوظيفي" required>
-            <input
-              value={formData.jobLevel}
-              onChange={(event) => updateField("jobLevel", event.target.value)}
-              className={inputClassName}
-            />
+            <div className="relative">
+              <select
+                value={formData.jobLevel}
+                onChange={(event) =>
+                  updateField("jobLevel", event.target.value)
+                }
+                className={cn(inputClassName, "appearance-none pe-10")}
+              >
+                <option value="">اختر المستوى الوظيفي</option>
+                {jobLevelOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#a2a6ae]" />
+            </div>
           </FieldLabel>
 
           <FieldLabel label="سنوات الخبرة" required>

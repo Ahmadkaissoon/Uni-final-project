@@ -35,6 +35,7 @@ interface RawCompanySummary {
 
 interface RawTrainingsSummaryResponse {
   trainings: RawTraining[];
+  usersRequestedTrainings?: number | null;
 }
 
 interface RawCompaniesSummaryResponse {
@@ -121,7 +122,12 @@ function mapTraining(
   } satisfies AdminTrainingRecord;
 }
 
-export async function getAdminTrainings(): Promise<AdminTrainingRecord[]> {
+export interface AdminTrainingsSummary {
+  trainings: AdminTrainingRecord[];
+  totalRequests: number;
+}
+
+export async function getAdminTrainings(): Promise<AdminTrainingsSummary> {
   const [trainingsResponse, companiesResponse] = await Promise.all([
     axiosClient.get<RawTrainingsSummaryResponse>("/dashboard/training/summary"),
     axiosClient.get<RawCompaniesSummaryResponse>("/dashboard/company/summary"),
@@ -131,7 +137,17 @@ export async function getAdminTrainings(): Promise<AdminTrainingRecord[]> {
     companiesResponse.data.companies.map((company) => [company._id, company]),
   );
 
-  return trainingsResponse.data.trainings.map((training) =>
+  const trainings = trainingsResponse.data.trainings.map((training) =>
     mapTraining(training, companiesMap),
   );
+
+  return {
+    trainings,
+    totalRequests:
+      trainingsResponse.data.usersRequestedTrainings ??
+      trainings.reduce(
+        (total, training) => total + training.applicationsCount,
+        0,
+      ),
+  };
 }

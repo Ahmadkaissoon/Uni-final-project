@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 
 import type { CompanyProfileData } from "../utils/portalProfileSchemas";
-import { useGetData } from "./useQueries";
+import { queryClient } from "./queryClient";
+import { useGetData, useUpdateData } from "./useQueries";
 
 interface ApiCompanyProfile {
   companyName?: string;
@@ -18,6 +19,7 @@ interface ApiCompanyProfile {
   monthlyJobPostsPlanned?: number | null;
   companyRecommendations?: string | null;
   logoUrl?: string | null;
+  licenseFilename?: string | null;
   licenseUrl?: string | null;
 }
 
@@ -29,6 +31,16 @@ interface ApiCompanyProfileResponse {
 export interface PortalCompanyProfileData {
   formData: CompanyProfileData;
   avatarSrc: string | null;
+  licenseFilename: string;
+  licenseUrl: string | null;
+}
+
+export interface PortalCompanyProfileSubmitPayload {
+  formData: CompanyProfileData;
+  logo: File | null;
+  licenseImage?: File | null;
+  removeLogo?: boolean;
+  removeLicense?: boolean;
 }
 
 function formatValue(value: unknown) {
@@ -37,6 +49,38 @@ function formatValue(value: unknown) {
   }
 
   return String(value).trim();
+}
+
+function toOptionalNumber(value: string) {
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) {
+    return undefined;
+  }
+
+  const parsedValue = Number(normalizedValue);
+  return Number.isFinite(parsedValue) ? parsedValue : undefined;
+}
+
+function splitCommaSeparatedValue(value: string) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeCompanySector(value: unknown) {
+  const normalizedValue = formatValue(value).toLowerCase();
+  const sectorAliases: Record<string, string> = {
+    technology: "technology",
+    tech: "technology",
+    marketing: "marketing",
+    design: "design",
+    education: "education",
+    other: "other",
+  };
+
+  return sectorAliases[normalizedValue] ?? formatValue(value);
 }
 
 function getApiAssetUrl(path?: string | null) {
@@ -73,9 +117,11 @@ export function mapApiCompanyProfileToPortalCompanyProfileData(
 
   return {
     avatarSrc: getApiAssetUrl(profile.logoUrl),
+    licenseFilename: formatValue(profile.licenseFilename),
+    licenseUrl: getApiAssetUrl(profile.licenseUrl),
     formData: {
       companyName: formatValue(profile.companyName),
-      sector: formatValue(profile.sector),
+      sector: normalizeCompanySector(profile.sector),
       employeeCount: formatValue(profile.numberOfEmployees),
       country: formatValue(profile.country),
       city: formatValue(profile.city),
@@ -91,6 +137,47 @@ export function mapApiCompanyProfileToPortalCompanyProfileData(
       companyRecommendations: formatValue(profile.companyRecommendations),
     },
   };
+}
+
+export function buildPortalCompanyProfilePayload({
+  formData,
+  logo,
+  licenseImage = null,
+  removeLogo = false,
+  removeLicense = false,
+}: PortalCompanyProfileSubmitPayload) {
+  const payload = {
+    companyProfile: {
+      companyName: formData.companyName.trim(),
+      sector: formData.sector.trim(),
+      numberOfEmployees: toOptionalNumber(formData.employeeCount),
+      country: formData.country.trim(),
+      city: formData.city.trim(),
+      address: formData.address.trim(),
+      companyPhone: formData.companyPhone.trim(),
+      website: formData.website.trim() || null,
+      hrManagerName: formData.hiringManagerName.trim(),
+      companyEmail: formData.companyEmail.trim(),
+      jobTypes: splitCommaSeparatedValue(formData.hiringJobTypes),
+      monthlyJobPostsPlanned: toOptionalNumber(formData.monthlyOpenings),
+      companyRecommendations: formData.companyRecommendations.trim() || null,
+    },
+    ...(removeLogo ? { removeLogo: true } : {}),
+    ...(removeLicense ? { removeLicense: true } : {}),
+  };
+
+  const requestBody = new FormData();
+  requestBody.append("data", JSON.stringify(payload));
+
+  if (logo) {
+    requestBody.append("logo", logo);
+  }
+
+  if (licenseImage) {
+    requestBody.append("licenseImage", licenseImage);
+  }
+
+  return requestBody;
 }
 
 export function usePortalCompanyProfile() {
@@ -109,4 +196,28 @@ export function usePortalCompanyProfile() {
     ...query,
     profileData,
   };
+}
+
+export function useUpdatePortalCompanyProfile() {
+  return useUpdateData<ApiCompanyProfileResponse, FormData>(
+    "/users/profile/company",
+    {},
+    true,
+    "put",
+    {
+      toastMessages: {
+        loading: "جاري حفظ بيانات الشركة...",
+        success: "تم تحديث بيانات الشركة بنجاح",
+        error: "فشل تحديث بيانات الشركة",
+      },
+      onSuccess: () => {
+        void queryClient.invalidateQueries({
+          queryKey: ["portal-company-profile"],
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ["portal-auth-profile", "company"],
+        });
+      },
+    },
+  );
 }

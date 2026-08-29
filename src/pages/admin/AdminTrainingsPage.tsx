@@ -37,6 +37,7 @@ export default function AdminTrainingsPage() {
   const [locationFilter, setLocationFilter] = useState("all");
   const [selectedTraining, setSelectedTraining] =
     useState<AdminTrainingRecord | null>(null);
+  const [totalRequests, setTotalRequests] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +51,8 @@ export default function AdminTrainingsPage() {
         const data = await getAdminTrainings();
 
         if (mounted) {
-          setTrainings(data);
+          setTrainings(data.trainings);
+          setTotalRequests(data.totalRequests);
         }
       } catch {
         if (mounted) {
@@ -131,10 +133,7 @@ export default function AdminTrainingsPage() {
             إجمالي الطلبات
           </p>
           <strong className="mt-2 block text-size28 text-emerald-600">
-            {trainings.reduce(
-              (total, training) => total + training.applicationsCount,
-              0,
-            )}
+            {totalRequests}
           </strong>
         </article>
       </section>

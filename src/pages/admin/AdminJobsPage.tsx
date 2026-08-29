@@ -33,6 +33,7 @@ export default function AdminJobsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [selectedJob, setSelectedJob] = useState<AdminJobRecord | null>(null);
+  const [totalRequests, setTotalRequests] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,7 +47,8 @@ export default function AdminJobsPage() {
         const data = await getAdminJobs();
 
         if (mounted) {
-          setJobs(data);
+          setJobs(data.jobs);
+          setTotalRequests(data.totalRequests);
         }
       } catch {
         if (mounted) {
@@ -128,7 +130,7 @@ export default function AdminJobsPage() {
             إجمالي الطلبات
           </p>
           <strong className="mt-2 block text-size28 text-emerald-600">
-            {jobs.reduce((total, job) => total + job.applicationsCount, 0)}
+            {totalRequests}
           </strong>
         </article>
       </section>
