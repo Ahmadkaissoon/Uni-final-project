@@ -50,12 +50,10 @@ const constrainedJobTypeOptions: SelectOption[] = [
 ];
 
 const constrainedEnglishLevelOptions: SelectOption[] = [
-  { value: "A1", label: "A1" },
-  { value: "A2", label: "A2" },
-  { value: "B1", label: "B1" },
-  { value: "B2", label: "B2" },
-  { value: "C1", label: "C1" },
-  { value: "C2", label: "C2" },
+  { value: "native", label: "لغة أم" },
+  { value: "fluent", label: "طليق" },
+  { value: "intermediate", label: "متوسط" },
+  { value: "basic", label: "أساسي" },
 ];
 
 const constrainedSeniorityOptions: SelectOption[] = jobLevelOptions;
@@ -318,13 +316,13 @@ export default function PortalCompanyJobForm({
               {isConstrainedMode ? (
                 <CompanySelectField
                   field="englishLevel"
-                  label="مستوى اللغة الإنجليزية :"
+                  label="مستوى اللغة المطلوبة :"
                   value={formData.englishLevel}
                   options={constrainedEnglishLevelOptions}
                   onChange={updateField}
                 />
               ) : (
-                <CompanyFieldLabel label="مستوى اللغة الإنجليزية :">
+                <CompanyFieldLabel label="مستوى اللغة المطلوبة :">
                   <input
                     value={formData.englishLevel}
                     onChange={(event) =>
@@ -420,13 +418,13 @@ export default function PortalCompanyJobForm({
               {isConstrainedMode ? (
                 <CompanySelectField
                   field="cvLanguage"
-                  label="لغة السيرة الذاتية :"
+                  label="اللغة المطلوبة :"
                   value={formData.cvLanguage}
                   options={constrainedResumeLanguageOptions}
                   onChange={updateField}
                 />
               ) : (
-                <CompanyFieldLabel label="لغة السيرة الذاتية :">
+                <CompanyFieldLabel label="اللغة المطلوبة :">
                   <input
                     value={formData.cvLanguage}
                     onChange={(event) =>

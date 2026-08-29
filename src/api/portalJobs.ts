@@ -15,6 +15,11 @@ interface ApiJobCompany {
     website?: string | null
 }
 
+interface ApiJobRequiredLanguage {
+    language?: string
+    level?: string
+}
+
 interface ApiJob {
     _id: string
     category?: string
@@ -31,11 +36,12 @@ interface ApiJob {
     location?: string
     minSalary?: number
     maxSalary?: number
+    requiredLanguages?: ApiJobRequiredLanguage[]
     resumeLanguage?: string
     languagelevel?: string
     description?: string
     responsibilities?: string
-    skills?: string
+    skills?: string | string[]
     requirements?: string
     status?: string
     applicationsCount?: number
@@ -99,13 +105,15 @@ export interface CreatePortalJobPayload {
     location: string
     minSalary?: number
     maxSalary?: number
-    resumeLanguage: string
+    requiredLanguages: Array<{
+        language: string
+        level: string
+    }>
     description: string
     responsibilities: string
-    skills: string
+    skills: string[]
     requirements: string
     workType: string
-    languagelevel: string
 }
 
 function getApiAssetUrl(path?: string | null) {
@@ -231,7 +239,22 @@ function formatWorkType(value?: string) {
 }
 
 function formatLanguageLevel(value?: string) {
-    switch (`${value ?? ""}`.trim().toUpperCase()) {
+    const normalizedValue = `${value ?? ""}`.trim()
+
+    switch (normalizedValue.toLowerCase()) {
+        case "native":
+            return "native"
+        case "fluent":
+            return "fluent"
+        case "intermediate":
+            return "intermediate"
+        case "basic":
+            return "basic"
+        default:
+            break
+    }
+
+    switch (normalizedValue.toUpperCase()) {
         case "A1":
             return "A1 - مبتدئ"
         case "A2":
@@ -260,6 +283,22 @@ function formatResumeLanguage(value?: string) {
         default:
             return formatSentenceValue(value)
     }
+}
+
+function getPrimaryRequiredLanguage(job: ApiJob) {
+    return job.requiredLanguages?.find((language) => language.language?.trim())
+}
+
+function formatSkillsValue(value: ApiJob["skills"]) {
+    if (Array.isArray(value)) {
+        const skills = value
+            .map((skill) => `${skill}`.trim())
+            .filter(Boolean)
+
+        return skills.length > 0 ? skills.join(", ") : undefined
+    }
+
+    return value
 }
 
 function formatWorkDays(value?: string) {
@@ -293,6 +332,8 @@ function createDetailEntry(
 }
 
 function createApiJobDetailColumns(job: ApiJob): PortalJobDetailEntry[][] {
+    const primaryRequiredLanguage = getPrimaryRequiredLanguage(job)
+
     return [
         [
             createDetailEntry(
@@ -302,8 +343,10 @@ function createApiJobDetailColumns(job: ApiJob): PortalJobDetailEntry[][] {
             ),
             createDetailEntry(
                 "english-level",
-                "مستوى اللغة الإنجليزية",
-                formatLanguageLevel(job.languagelevel),
+                "مستوى اللغة المطلوبة",
+                formatLanguageLevel(
+                    primaryRequiredLanguage?.level ?? job.languagelevel,
+                ),
             ),
             createDetailEntry("work-type", "نوع العمل", formatJobType(job.jobType)),
             createDetailEntry(
@@ -340,8 +383,10 @@ function createApiJobDetailColumns(job: ApiJob): PortalJobDetailEntry[][] {
             ),
             createDetailEntry(
                 "cv-language",
-                "لغة السيرة الذاتية",
-                formatResumeLanguage(job.resumeLanguage),
+                "اللغة المطلوبة",
+                formatResumeLanguage(
+                    primaryRequiredLanguage?.language ?? job.resumeLanguage,
+                ),
             ),
             createDetailEntry("location", "المكان", formatSentenceValue(job.location)),
             {
@@ -369,7 +414,7 @@ function createApiJobDetailColumns(job: ApiJob): PortalJobDetailEntry[][] {
             createDetailEntry(
                 "qualifications",
                 "المؤهلات والمهارات",
-                formatSentenceValue(job.skills),
+                formatSentenceValue(formatSkillsValue(job.skills)),
             ),
             createDetailEntry(
                 "requirements",
@@ -443,6 +488,13 @@ function extractNumber(value: string) {
 
     const parsedValue = Number(match[0])
     return Number.isFinite(parsedValue) ? parsedValue : undefined
+}
+
+function splitCommaSeparatedValue(value: string) {
+    return value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
 }
 
 function normalizeJobLevelForApi(value: string) {
@@ -565,28 +617,31 @@ function normalizeResumeLanguageForApi(value: string) {
     )
 }
 
-function normalizeLanguageLevelForApi(value: string) {
+function normalizeRequiredLanguageLevelForApi(value: string) {
     return normalizeEnumValue(
         value,
         {
-            a1: "A1",
-            a2: "A2",
-            b1: "B1",
-            b2: "B2",
-            c1: "C1",
-            c2: "C2",
-            basic: "A2",
-            beginner: "A2",
-            مبتدئ: "A2",
-            متوسط: "B1",
-            intermediate: "B1",
-            متقدم: "B2",
-            advanced: "B2",
-            fluent: "C1",
-            طليق: "C1",
-            احترافي: "C2",
+            native: "native",
+            a1: "basic",
+            a2: "basic",
+            b1: "intermediate",
+            b2: "intermediate",
+            c1: "fluent",
+            c2: "fluent",
+            basic: "basic",
+            beginner: "basic",
+            مبتدئ: "basic",
+            أساسي: "basic",
+            متوسط: "intermediate",
+            intermediate: "intermediate",
+            متقدم: "fluent",
+            advanced: "fluent",
+            fluent: "fluent",
+            طليق: "fluent",
+            احترافي: "fluent",
+            "لغة أم": "native",
         },
-        "B1",
+        "intermediate",
         false,
     )
 }
@@ -607,13 +662,17 @@ export function mapCompanyJobFormDataToCreatePortalJobPayload(
         location: normalizeSpaces(formData.location),
         minSalary: extractNumber(formData.minSalary),
         maxSalary: extractNumber(formData.maxSalary),
-        resumeLanguage: normalizeResumeLanguageForApi(formData.cvLanguage),
+        requiredLanguages: [
+            {
+                language: normalizeResumeLanguageForApi(formData.cvLanguage),
+                level: normalizeRequiredLanguageLevelForApi(formData.englishLevel),
+            },
+        ],
         description: formData.jobSummary.trim(),
         responsibilities: formData.responsibilities.trim(),
-        skills: formData.qualifications.trim(),
+        skills: splitCommaSeparatedValue(formData.qualifications),
         requirements: formData.requirements.trim(),
         workType: normalizeWorkTypeForApi(formData.jobType),
-        languagelevel: normalizeLanguageLevelForApi(formData.englishLevel),
     }
 }
 
